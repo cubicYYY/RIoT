@@ -1,0 +1,5 @@
+./backend/target
+.DS_Store
+.vscode
+.git
+
