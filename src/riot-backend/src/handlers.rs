@@ -23,9 +23,10 @@ async fn all_devices() -> impl Responder {
 // devices
 #[utoipa::path(
         get,
+        context_path = "/api",
         path = "/devices/{did}",
         responses(
-            (status = 200, description = "Device info", body = Pet),
+            (status = 200, description = "Device info", body = Device),
             (status = NOT_FOUND, description = "Device was not found")
         ),
         params()
@@ -61,15 +62,6 @@ async fn all_sites() -> impl Responder {
     HttpResponse::Ok().body("ALL SITES!")
 }
 
-#[utoipa::path(
-        get,
-        path = "/sites/{sid}",
-        responses(
-            (status = 200, description = "Site info", body = ()),
-            (status = NOT_FOUND, description = "Site was not found")
-        ),
-        params()
-    )]
 #[get("/sites/{sid}")]
 async fn site_info(path: web::Path<u32>) -> impl Responder {
     HttpResponse::Ok().body(format!("*get sid={}!", path.into_inner()))

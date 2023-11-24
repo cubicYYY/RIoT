@@ -1,5 +1,10 @@
 use actix_web::web::Bytes;
+use chrono::{DateTime, NaiveDate};
+use serde::{Serialize, Deserialize};
+use sqlx::{Pool, mysql};
 use utoipa::ToSchema;
+
+// HTTP Requests
 
 #[derive(ToSchema)]
 pub struct LoginForm {
@@ -14,16 +19,32 @@ pub struct RegisterForm {
    password: String,
 }
 
-#[derive(ToSchema)]
-pub struct User {
-   id: u32,
-   username: String,
-   email: String,
-   password: String,
-   activated: bool,
-   privilege: u8,
-   since: u64,
+// HTTP Responses
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct Response {
+   pub status: &'static str,
+   pub message: String,
 }
+
+// Internal Data Structures
+
+pub type UserPriv = u8;
+
+#[derive(ToSchema, Clone)]
+pub struct User {
+   pub id: u32,
+   pub username: String,
+   pub email: String,
+   pub password: String,
+   pub activated: bool,
+   pub privilege: UserPriv,
+
+   /// Precision: milliseconds
+   pub since: u64,
+}
+
+// SQL Schemas
 
 #[derive(ToSchema)]
 pub struct Device {
@@ -32,8 +53,10 @@ pub struct Device {
    name: String,
    desc: String,
    dtype: u32, // TODO: Should we just use a string to describe it?
-   since: u64,
-   last_update: u64,
+   /// Precision: milliseconds
+   since: NaiveDate,
+   /// Precision: milliseconds
+   last_update: NaiveDate,
 }
 
 #[derive(ToSchema)]
@@ -42,7 +65,6 @@ pub struct Site {
    uid: u32,
    name: String,
    desc: String,
-   since: u64,
 }
 
 #[derive(ToSchema)]
@@ -51,9 +73,12 @@ pub struct Record {
    /// Device id
    did: u32,
    payload: Bytes,
+   /// Precision: 32 bits
    latitude: Option<f32>,
+   /// Precision: 32 bits
    longitude: Option<f32>,
-   timestamp: u64,
+   /// Precision: milliseconds
+   timestamp: NaiveDate,
 }
 
 #[derive(ToSchema)]
