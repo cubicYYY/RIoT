@@ -19,7 +19,9 @@ serde = "1.0.193"
 jsonwebtoken = "9.1.0"
 serde_json = "1.0.108"
 futures-util = "0.3.29"
-sqlx = {version = "0.7.3", features = ["mysql"] }
+diesel = { version = "2.1.0", features = ["mysql", "r2d2"] }
+diesel-async = { version = "0.4.1", features = ["mysql", "deadpool"] }
+futures = "0.3.29"
 
 [dependencies.uuid]
 version = "1.6.1"

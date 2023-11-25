@@ -1,7 +1,6 @@
 use actix_web::web::Bytes;
 use chrono::{DateTime, NaiveDate};
 use serde::{Serialize, Deserialize};
-use sqlx::{Pool, mysql};
 use utoipa::ToSchema;
 
 // HTTP Requests
