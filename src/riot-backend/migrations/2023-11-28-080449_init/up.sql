@@ -2,25 +2,25 @@ CREATE DATABASE IF NOT EXISTS `riot`;
 USE `riot`;
 CREATE TABLE IF NOT EXISTS `user` (
     `id` SERIAL PRIMARY KEY,
-    `username` VARCHAR(64) NOT NULL,
-    `email` VARCHAR(256),
-    `password` VARCHAR(64),
-    `privilege` INT,
-    `api_key` VARCHAR(64),
-    `since` DATETIME(3),
-    `activated` BOOLEAN DEFAULT FALSE,
+    `username` VARCHAR(64) NOT NULL UNIQUE,
+    `email` VARCHAR(256) NOT NULL UNIQUE,
+    `password` VARCHAR(64) NOT NULL,
+    `privilege` INT UNSIGNED DEFAULT 0 NOT NULL,
+    `api_key` VARCHAR(64) DEFAULT NULL,
+    `since` DATETIME(3) NOT NULL,
+    `activated` BOOLEAN DEFAULT FALSE NOT NULL,
     INDEX username_index (`username`),
     INDEX api_index (`api_key`)
 );
 CREATE TABLE IF NOT EXISTS `device` (
     `id` SERIAL PRIMARY KEY,
     `uid` BIGINT UNSIGNED NOT NULL,
-    `name` VARCHAR(255),
-    `desc` TEXT,
-    `dtype` INT,
-    `since` DATETIME(3),
-    `last_update` DATETIME(3),
-    `activated` BOOLEAN DEFAULT FALSE,
+    `name` VARCHAR(255) NOT NULL,
+    `desc` TEXT DEFAULT NULL,
+    `dtype` INT DEFAULT 0 NOT NULL,
+    `since` DATETIME(3) NOT NULL,
+    `last_update` DATETIME(3) NOT NULL,
+    `activated` BOOLEAN DEFAULT FALSE NOT NULL,
     FOREIGN KEY (`uid`) REFERENCES `user`(id)
 );
 CREATE TABLE IF NOT EXISTS `site` (

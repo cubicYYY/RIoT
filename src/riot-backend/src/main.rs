@@ -105,7 +105,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api")
                     .wrap(RequireAuth {
-                        priv_needed: 1.into(),
+                        priv_needed: (models::UserPrivilege::Normal as u32).into(),
                     })
                     //users
                     .service(user_register)

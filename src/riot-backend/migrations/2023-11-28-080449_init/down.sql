@@ -1,1 +1,5 @@
--- Do nothing for safety.
+DROP TABLE IF EXISTS `record`;
+DROP TABLE IF EXISTS `owns`;
+DROP TABLE IF EXISTS `site`;
+DROP TABLE IF EXISTS `device`;
+DROP TABLE IF EXISTS `user`;

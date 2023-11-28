@@ -1,9 +1,11 @@
+use actix_web::dev::Payload;
 use actix_web::error::ErrorInternalServerError;
-use actix_web::{FromRequest, HttpMessage};
+use actix_web::{FromRequest, HttpMessage, HttpRequest, web};
 use actix_web::web::Bytes;
 use chrono::NaiveDateTime;
 use diesel::mysql::Mysql;
 use diesel::deserialize::{QueryableByName, Queryable};
+use diesel::Insertable;
 use futures_util::future::{Ready, ready};
 use serde::{Serialize, Deserialize};
 use utoipa::ToSchema;
@@ -19,9 +21,9 @@ pub struct LoginForm {
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
 pub struct RegisterForm {
-   username: String,
-   email: String,
-   password: String,
+   pub username: String,
+   pub email: String,
+   pub password: String,
 }
 
 // HTTP Responses
@@ -34,13 +36,20 @@ pub struct Response {
 
 // Internal Data Structures & SQL Schemas
 
-pub type UserPriv = u8;
+pub type UserPriv = u32;
+pub enum UserPrivilege {
+   Inactivate,
+   Viewer,
+   Normal,
+   Admin,
+   SuperAdmin,
+}
 
-#[derive(ToSchema, Queryable, Clone, Debug)]
+#[derive(ToSchema, Queryable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(Mysql))]
 pub struct User {
-   pub id: u32,
+   pub id: Option<u64>,
    pub username: String,
    pub email: String,
    pub password: String,
@@ -85,7 +94,7 @@ pub struct Record {
    id: u32,
    /// Device id
    did: u32,
-   payload: Bytes,
+   payload: Vec<u8>,
    /// Precision: 32 bits
    latitude: Option<f32>,
    /// Precision: 32 bits

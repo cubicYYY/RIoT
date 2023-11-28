@@ -144,7 +144,7 @@ where
             //     .await
             //     .map_err(|e| ErrorInternalServerError(HttpError::server_error(e.to_string())))?;
             let result = Option::Some(User {
-                id: 1,
+                id: Option::Some(1),
                 username: "1".into(),
                 email: "1".into(),
                 password: "1".into(),

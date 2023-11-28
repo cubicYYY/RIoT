@@ -1,16 +1,65 @@
-use std::fs;
+use std::{default, fs};
 
-use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web::{
+    delete, get, post, put,
+    web::{self, Form},
+    HttpRequest, HttpResponse, Responder, ResponseError,
+};
+use chrono::NaiveDateTime;
+use diesel::{
+    insert_into,
+    result::{DatabaseErrorKind, Error},
+    ExpressionMethods,
+};
+use diesel_async::RunQueryDsl;
+use log::{error, info};
 
-use crate::models::RegisterForm;
+use crate::{
+    errors::{ErrorMessage, HttpError},
+    middlewares,
+    models::{self, RegisterForm, Response, User, UserPrivilege},
+    schema::user::{self, dsl::*},
+    AppState,
+};
 
 // ROUTES
 
 // users
 #[post("/users/register")]
-async fn user_register(form: web::Form<RegisterForm>) -> impl Responder {
-    // TODO: insert to DB
-    HttpResponse::Ok().body(format!("{:?}", form))
+async fn user_register(form: web::Form<RegisterForm>, req: HttpRequest) -> impl Responder {
+    let app = req
+        .app_data::<web::Data<AppState>>()
+        .expect("Internal error: invalid app state");
+    let mut conn = app.db.pool.get().await.unwrap();
+    let RegisterForm {
+        username: username_,
+        email: email_,
+        password: password_,
+    } = form.0;
+
+    match insert_into(user::table)
+        .values((
+            username.eq(username_),
+            email.eq(email_),
+            password.eq(password_), // TODO: password hash
+            privilege.eq(UserPrivilege::Normal as u32),
+            since.eq(NaiveDateTime::MIN), // TODO: time record
+        ))
+        .execute(&mut conn)
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().json(Response {
+            status: "ok",
+            message: "".into(),
+        }),
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _msg)) => {
+            HttpError::new(ErrorMessage::UserExist, 409).error_response()
+        }
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::new(ErrorMessage::ServerError, 500).error_response()
+        }
+    }
 }
 
 #[post("/users/login")]

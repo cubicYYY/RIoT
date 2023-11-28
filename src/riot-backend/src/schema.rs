@@ -5,11 +5,12 @@ diesel::table! {
         id -> Unsigned<Bigint>,
         uid -> Unsigned<Bigint>,
         #[max_length = 255]
-        name -> Nullable<Varchar>,
+        name -> Varchar,
         desc -> Nullable<Text>,
-        dtype -> Nullable<Integer>,
-        since -> Nullable<Datetime>,
-        last_update -> Nullable<Datetime>,
+        dtype -> Integer,
+        since -> Datetime,
+        last_update -> Datetime,
+        activated -> Bool,
     }
 }
 
@@ -39,6 +40,7 @@ diesel::table! {
         #[max_length = 255]
         name -> Nullable<Varchar>,
         desc -> Nullable<Text>,
+        activated -> Nullable<Bool>,
     }
 }
 
@@ -48,14 +50,14 @@ diesel::table! {
         #[max_length = 64]
         username -> Varchar,
         #[max_length = 256]
-        email -> Nullable<Varchar>,
+        email -> Varchar,
         #[max_length = 64]
-        password -> Nullable<Varchar>,
-        activated -> Nullable<Bool>,
-        privilege -> Nullable<Integer>,
+        password -> Varchar,
+        privilege -> Unsigned<Integer>,
         #[max_length = 64]
         api_key -> Nullable<Varchar>,
-        since -> Nullable<Datetime>,
+        since -> Datetime,
+        activated -> Bool,
     }
 }
 
