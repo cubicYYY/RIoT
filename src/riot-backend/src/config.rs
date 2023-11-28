@@ -8,9 +8,15 @@ pub struct Config {
 
 impl Config {
     pub fn init() -> Config {
-        let database_url = std::env::var("DATABASE_URL").or::<String>(Ok("127.0.0.1:3306".into())).unwrap();
-        let jwt_secret = std::env::var("JWT_SECRET_KEY").or::<String>(Ok("RiotSecret!".into())).unwrap();
-        let jwt_maxage = std::env::var("JWT_MAXAGE").or::<String>(Ok("86400".into())).unwrap();
+        let database_url = std::env::var("DATABASE_URL")
+            .or::<String>(Ok("mysql://root:root@localhost:3306/riot".into()))
+            .unwrap();
+        let jwt_secret = std::env::var("JWT_SECRET_KEY")
+            .or::<String>(Ok("RiotSecret!".into()))
+            .unwrap();
+        let jwt_maxage = std::env::var("JWT_MAXAGE")
+            .or::<String>(Ok("86400".into()))
+            .unwrap();
 
         Config {
             database_url,

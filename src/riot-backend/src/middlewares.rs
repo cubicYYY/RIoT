@@ -3,6 +3,7 @@ use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthoriz
 use actix_web::guard::Options;
 use actix_web::http::header;
 use actix_web::{http, web, FromRequest, HttpMessage, ResponseError};
+use chrono::NaiveDate;
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 use futures_util::FutureExt;
 use std::rc::Rc;
@@ -125,7 +126,7 @@ where
                     status: "fail".to_string(),
                     message: e.message,
                 };
-                return Box::pin(ready(Err(ErrorUnauthorized(json_error))))
+                return Box::pin(ready(Err(ErrorUnauthorized(json_error))));
             }
         };
 
@@ -148,8 +149,12 @@ where
                 email: "1".into(),
                 password: "1".into(),
                 activated: false,
-                privilege: 0,
-                since: 0,
+                privilege: 200,
+                api_key: "".into(),
+                since: NaiveDate::from_ymd_opt(2000, 6, 1)
+                    .unwrap()
+                    .and_hms_milli_opt(12, 3, 45, 666)
+                    .unwrap(),
             });
 
             let user = result.ok_or(ErrorUnauthorized(ErrorResponse {

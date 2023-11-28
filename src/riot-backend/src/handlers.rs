@@ -2,12 +2,15 @@ use std::fs;
 
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 
+use crate::models::RegisterForm;
+
 // ROUTES
 
 // users
 #[post("/users/register")]
-async fn user_register() -> impl Responder {
-    HttpResponse::Ok().body("Reg!")
+async fn user_register(form: web::Form<RegisterForm>) -> impl Responder {
+    // TODO: insert to DB
+    HttpResponse::Ok().body(format!("{:?}", form))
 }
 
 #[post("/users/login")]

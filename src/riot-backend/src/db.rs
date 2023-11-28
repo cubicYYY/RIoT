@@ -5,7 +5,7 @@ use diesel_async::AsyncMysqlConnection;
 
 #[derive(Clone)]
 pub struct DBClient {
-    pool: Pool<AsyncMysqlConnection>,
+    pub pool: Pool<AsyncMysqlConnection>,
 }
 
 impl DBClient {
@@ -28,7 +28,7 @@ mod tests {
     use super::DBClient;
 
     #[tokio::test]
-    async fn multi_connections() {
+    async fn multi_connections_with_raw_query() {
         let url = "mysql://root:root@localhost"; // Modify this link on your own
         let pool = DBClient::new(url).await.pool;
 

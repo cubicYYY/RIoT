@@ -6,14 +6,20 @@ mod middlewares;
 mod models;
 mod mqtt_instance;
 mod config;
+mod schema;
 
 use config::Config;
 use db::*;
+use diesel::MysqlConnection;
+use diesel_async::{pooled_connection::deadpool::Object, AsyncMysqlConnection};
+use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
 use handlers::*;
 use jwt_utils::*;
 use models::*;
 use std::thread;
 use utoipa_swagger_ui::{SwaggerUi, Url};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use log::{debug, error, log_enabled, info, Level};
 
 use actix_files::Files;
 use actix_web::{
@@ -28,16 +34,26 @@ use utoipa::OpenApi;
 
 use crate::{middlewares::RequireAuth, mqtt_instance::mqtt_instancer::MqttDaemon};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppState {
     pub env: Config,
+    pub db: DBClient,
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=debug");
+    // Run-time env building
 
-    // Generate OpenAPI docs
+    std::env::set_var("RUST_LOG", "info");
+    env_logger::init();
+
+    let config = Config::init();
+    let app_state: AppState = AppState {
+        env: config.clone(),
+        db: DBClient::new(&config.database_url).await
+    };
+
+    // MQTT Listening
 
     thread::spawn(move || {
         let (_, mut connection) = MqttDaemon::new_daemon();
@@ -50,6 +66,8 @@ async fn main() -> std::io::Result<()> {
             }
         }
     });
+    
+    // Generate OpenAPI docs
 
     #[derive(OpenApi)]
     #[openapi(
@@ -60,20 +78,29 @@ async fn main() -> std::io::Result<()> {
 
     let openapi = ApiDoc::openapi();
 
-    let config = Config::init();
-    let app_state: AppState = AppState {
-        env: config.clone(),
-    };
+    // SQL init migration
 
-    // Register services (API endpoints and user interfaces)
+    info!("Start database init...");
+    pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+    tokio::task::spawn_blocking(move || {
+        use diesel::prelude::Connection;
+        let conn = AsyncConnectionWrapper::<AsyncMysqlConnection>::establish(&config.database_url)?;
+        let mut async_wrapper = AsyncConnectionWrapper::<AsyncMysqlConnection>::from(conn);
+        async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
+        Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
+    }).await?.unwrap();
+    info!("Database init finished!");
+
+    // Register services (API endpoints and user interfaces routes)
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(app_state.clone()))
             .wrap(Logger::default())
-            .service(web::redirect("/swagger", "/swagger/"))
+            .service(web::redirect("/api-doc", "/api-doc/"))
             .service(
                 // Must be register here (the top instead of the bottom of service chain)
-                SwaggerUi::new("/swagger/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
+                SwaggerUi::new("/api-doc/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
             )
             .service(
                 web::scope("/api")
@@ -105,7 +132,7 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/", "./public").index_file("index.html"))
             .default_service(web::route().to(notfound_404))
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", 8888))?
     .run()
     .await
 }
