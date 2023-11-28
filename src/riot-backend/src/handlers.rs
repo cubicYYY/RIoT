@@ -1,8 +1,8 @@
-use std::{default, fs};
+use std::fs;
 
 use actix_web::{
     delete, get, post, put,
-    web::{self, Form},
+    web::{self},
     HttpRequest, HttpResponse, Responder, ResponseError,
 };
 use chrono::NaiveDateTime;
@@ -12,12 +12,11 @@ use diesel::{
     ExpressionMethods,
 };
 use diesel_async::RunQueryDsl;
-use log::{error, info};
+use log::error;
 
 use crate::{
     errors::{ErrorMessage, HttpError},
-    middlewares,
-    models::{self, RegisterForm, Response, User, UserPrivilege},
+    models::{RegisterForm, Response, UserPrivilege},
     schema::user::{self, dsl::*},
     AppState,
 };

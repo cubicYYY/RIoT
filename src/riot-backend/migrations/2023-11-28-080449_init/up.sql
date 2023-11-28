@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `device` (
     `uid` BIGINT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `desc` TEXT DEFAULT NULL,
-    `dtype` INT DEFAULT 0 NOT NULL,
+    `dtype` INT UNSIGNED DEFAULT 0 NOT NULL,
     `since` DATETIME(3) NOT NULL,
     `last_update` DATETIME(3) NOT NULL,
     `activated` BOOLEAN DEFAULT FALSE NOT NULL,
@@ -26,19 +26,19 @@ CREATE TABLE IF NOT EXISTS `device` (
 CREATE TABLE IF NOT EXISTS `site` (
     `id` SERIAL PRIMARY KEY,
     `uid` BIGINT UNSIGNED NOT NULL,
-    `name` VARCHAR(255),
+    `name` VARCHAR(255) NOT NULL,
     `desc` TEXT,
-    `activated` BOOLEAN DEFAULT FALSE,
+    `activated` BOOLEAN DEFAULT FALSE NOT NULL,
     FOREIGN KEY (`uid`) REFERENCES `user`(id)
 );
 
 CREATE TABLE IF NOT EXISTS `record` (
     `id` SERIAL PRIMARY KEY,
     `did` BIGINT UNSIGNED NOT NULL,
-    `payload` BINARY,
+    `payload` BINARY NOT NULL,
     `latitude` DOUBLE,
     `longitude` DOUBLE,
-    `timestamp` DATETIME(3),
+    `timestamp` DATETIME(3) NOT NULL,
     FOREIGN KEY (`did`) REFERENCES `device`(id)
 );
 

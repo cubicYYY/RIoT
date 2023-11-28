@@ -1,8 +1,8 @@
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized};
-use actix_web::guard::Options;
-use actix_web::http::header;
-use actix_web::{http, web, FromRequest, HttpMessage, ResponseError};
+
+
+use actix_web::{http, web, FromRequest, HttpMessage};
 use chrono::NaiveDate;
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 use futures_util::FutureExt;
@@ -11,7 +11,7 @@ use std::task::{Context, Poll};
 
 use crate::errors::{ErrorMessage, ErrorResponse, HttpError};
 use crate::jwt_utils::parse_token;
-use crate::models::{User, UserPriv};
+use crate::models::User;
 use crate::AppState;
 
 pub struct AuthenticatedUser(User);
@@ -44,11 +44,11 @@ impl std::ops::Deref for AuthenticatedUser {
 }
 
 pub struct RequireAuth {
-    pub priv_needed: Rc<UserPriv>,
+    pub priv_needed: Rc<u32>,
 }
 
 impl RequireAuth {
-    pub fn with_priv_level(priv_level: UserPriv) -> Self {
+    pub fn with_priv_level(priv_level: u32) -> Self {
         RequireAuth {
             priv_needed: Rc::new(priv_level),
         }
@@ -79,7 +79,7 @@ where
 
 pub struct AuthMiddleware<S> {
     service: Rc<S>,
-    allowed_roles: Rc<UserPriv>,
+    allowed_roles: Rc<u32>,
 }
 
 impl<S> Service<ServiceRequest> for AuthMiddleware<S>
@@ -131,12 +131,12 @@ where
         };
 
         // Now the user identity is verified, start authentication checking
-        let cloned_app_state = app_state.clone();
+        let _cloned_app_state = app_state.clone();
         let allowed_roles = self.allowed_roles.clone();
         let srv = Rc::clone(&self.service);
 
         async move {
-            let user_id = uuid::Uuid::parse_str(user_id.as_str()).expect("UUID parsing failed");
+            let _user_id = uuid::Uuid::parse_str(user_id.as_str()).expect("UUID parsing failed");
             // TODO: Check the database
             // let result = cloned_app_state
             //     .db_client
@@ -144,13 +144,13 @@ where
             //     .await
             //     .map_err(|e| ErrorInternalServerError(HttpError::server_error(e.to_string())))?;
             let result = Option::Some(User {
-                id: Option::Some(1),
+                id: 1,
                 username: "1".into(),
                 email: "1".into(),
                 password: "1".into(),
                 activated: false,
                 privilege: 200,
-                api_key: "".into(),
+                api_key: Option::None,
                 since: NaiveDate::from_ymd_opt(2000, 6, 1)
                     .unwrap()
                     .and_hms_milli_opt(12, 3, 45, 666)

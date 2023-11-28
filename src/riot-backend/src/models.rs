@@ -1,16 +1,17 @@
-use actix_web::dev::Payload;
-use actix_web::error::ErrorInternalServerError;
-use actix_web::{FromRequest, HttpMessage, HttpRequest, web};
-use actix_web::web::Bytes;
+
+
+
+
 use chrono::NaiveDateTime;
+
+use diesel::deserialize::Queryable;
 use diesel::mysql::Mysql;
-use diesel::deserialize::{QueryableByName, Queryable};
-use diesel::Insertable;
-use futures_util::future::{Ready, ready};
+use diesel::{Insertable, Selectable};
+
 use serde::{Serialize, Deserialize};
 use utoipa::ToSchema;
-use crate::schema::*;
-use crate::errors::*;
+
+
 // HTTP Requests
 
 #[derive(Serialize, Deserialize, ToSchema, Debug)]
@@ -36,7 +37,6 @@ pub struct Response {
 
 // Internal Data Structures & SQL Schemas
 
-pub type UserPriv = u32;
 pub enum UserPrivilege {
    Inactivate,
    Viewer,
@@ -45,29 +45,29 @@ pub enum UserPrivilege {
    SuperAdmin,
 }
 
-#[derive(ToSchema, Queryable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(Mysql))]
 pub struct User {
-   pub id: Option<u64>,
+   pub id: u64,
    pub username: String,
    pub email: String,
    pub password: String,
-   pub privilege: UserPriv,
-   pub api_key: String,
+   pub privilege: u32,
+   pub api_key: Option<String>,
    /// Precision: milliseconds
    pub since: NaiveDateTime,
    pub activated: bool,
 }
 
-#[derive(ToSchema, Queryable, Clone, Debug)]
+#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Device {
-   id: u32,
-   uid: u32,
+   id: u64,
+   uid: u64,
    name: String,
-   desc: String,
+   desc: Option<String>,
    dtype: u32, // TODO: Should we just use a string to describe it?
    /// Precision: milliseconds
    since: NaiveDateTime,
@@ -76,39 +76,39 @@ pub struct Device {
    pub activated: bool,
 }
 
-#[derive(ToSchema, Queryable, Clone, Debug)]
+#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::site)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Site {
-   id: u32,
-   uid: u32,
+   id: u64,
+   uid: u64,
    name: String,
-   desc: String,
+   desc: Option<String>,
    pub activated: bool,
 }
 
-#[derive(ToSchema, Queryable, Clone, Debug)]
+#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::record)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Record {
-   id: u32,
+   id: u64,
    /// Device id
-   did: u32,
+   did: u64,
    payload: Vec<u8>,
-   /// Precision: 32 bits
-   latitude: Option<f32>,
-   /// Precision: 32 bits
-   longitude: Option<f32>,
+   /// Precision: 64 bits
+   latitude: Option<f64>,
+   /// Precision: 64 bits
+   longitude: Option<f64>,
    /// Precision: milliseconds
    timestamp: NaiveDateTime,
 }
 
-#[derive(ToSchema, Queryable, Clone, Debug)]
+#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::owns)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Owns {
    /// Site id
-   sid: u32,
+   sid: u64,
    /// Device id
-   did: u32,
+   did: u64,
 }

@@ -7,7 +7,7 @@ diesel::table! {
         #[max_length = 255]
         name -> Varchar,
         desc -> Nullable<Text>,
-        dtype -> Integer,
+        dtype -> Unsigned<Integer>,
         since -> Datetime,
         last_update -> Datetime,
         activated -> Bool,
@@ -26,10 +26,10 @@ diesel::table! {
         id -> Unsigned<Bigint>,
         did -> Unsigned<Bigint>,
         #[max_length = 1]
-        payload -> Nullable<Binary>,
+        payload -> Binary,
         latitude -> Nullable<Double>,
         longitude -> Nullable<Double>,
-        timestamp -> Nullable<Datetime>,
+        timestamp -> Datetime,
     }
 }
 
@@ -38,9 +38,9 @@ diesel::table! {
         id -> Unsigned<Bigint>,
         uid -> Unsigned<Bigint>,
         #[max_length = 255]
-        name -> Nullable<Varchar>,
+        name -> Varchar,
         desc -> Nullable<Text>,
-        activated -> Nullable<Bool>,
+        activated -> Bool,
     }
 }
 

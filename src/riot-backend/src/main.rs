@@ -10,16 +10,16 @@ mod schema;
 
 use config::Config;
 use db::*;
-use diesel::MysqlConnection;
-use diesel_async::{pooled_connection::deadpool::Object, AsyncMysqlConnection};
+
+use diesel_async::AsyncMysqlConnection;
 use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
 use handlers::*;
-use jwt_utils::*;
+
 use models::*;
 use std::thread;
-use utoipa_swagger_ui::{SwaggerUi, Url};
+use utoipa_swagger_ui::SwaggerUi;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::{debug, error, log_enabled, info, Level};
+use log::info;
 
 use actix_files::Files;
 use actix_web::{
