@@ -4,12 +4,13 @@ CREATE TABLE IF NOT EXISTS `user` (
     `id` SERIAL PRIMARY KEY,
     `username` VARCHAR(64) NOT NULL UNIQUE,
     `email` VARCHAR(256) NOT NULL UNIQUE,
-    `password` VARCHAR(64) NOT NULL,
+    `password` VARCHAR(256) NOT NULL,
     `privilege` INT UNSIGNED DEFAULT 0 NOT NULL,
     `api_key` VARCHAR(64) DEFAULT NULL,
     `since` DATETIME(3) NOT NULL,
     `activated` BOOLEAN DEFAULT FALSE NOT NULL,
     INDEX username_index (`username`),
+    INDEX email_index (`email`),
     INDEX api_index (`api_key`)
 );
 CREATE TABLE IF NOT EXISTS `device` (

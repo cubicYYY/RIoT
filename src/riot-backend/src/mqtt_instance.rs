@@ -1,5 +1,5 @@
 pub mod mqtt_instancer {
-    use rumqttc::{Client, MqttOptions, Connection};
+    use rumqttc::{Client, Connection, MqttOptions};
     use std::time::Duration;
 
     pub struct MqttDaemon {}
@@ -16,9 +16,9 @@ pub mod mqtt_instancer {
 #[cfg(test)]
 mod tests {
     use super::mqtt_instancer::MqttDaemon;
-    use rumqttc::{QoS, Packet};
-    use std::{thread, time::Duration};
     use rumqttc::Event::Incoming;
+    use rumqttc::{Packet, QoS};
+    use std::{thread, time::Duration};
 
     #[tokio::test]
     async fn test() {

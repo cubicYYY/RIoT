@@ -25,7 +25,7 @@ pub fn generate_token(
 
     let now = Utc::now();
     let iat = now.timestamp() as usize;
-    let exp = (now + Duration::minutes(expires_in_seconds)).timestamp() as usize;
+    let exp = (now + Duration::seconds(expires_in_seconds)).timestamp() as usize;
     let claims = JwtClaims {
         sub: user_id.to_string(),
         exp,
@@ -53,14 +53,11 @@ pub fn parse_token<T: Into<String>>(token: T, secret: &[u8]) -> Result<String, H
 
 #[cfg(test)]
 mod tests {
-
-    use uuid::Uuid;
-
     use super::*;
 
     #[test]
     fn test_create_and_decoded_valid_token() {
-        let user_id = Uuid::new_v4().to_string();
+        let user_id = "illegal_id";
         let secret = b"RiotSecret!";
 
         let token = generate_token(&user_id, secret, 60).unwrap();

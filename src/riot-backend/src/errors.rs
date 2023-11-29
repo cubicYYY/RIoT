@@ -1,4 +1,4 @@
-use std::{fmt, error::Error};
+use std::{error::Error, fmt};
 
 use actix_web::{HttpResponse, ResponseError};
 use serde::{Deserialize, Serialize};
@@ -24,13 +24,17 @@ pub enum ErrorMessage {
     InsufficientPasswordLength(usize),
     HashingError,
     InvalidHashFormat,
+    InvalidUserInput,
     InvalidToken,
+    InvalidUsername,
+    InvalidPassword,
+    InvalidEmail,
     ServerError,
     WrongCredentials,
     EmailExist,
     UsernameExist,
     UserExist,
-    UserNoLongerExist,
+    UserNotActivated,
     TokenNotProvided,
     PermissionDenied,
 }
@@ -55,8 +59,8 @@ impl ErrorMessage {
             ErrorMessage::EmailExist => "An User with this email already exists".into(),
             ErrorMessage::UsernameExist => "An User with this username already exists".into(),
             ErrorMessage::UserExist => "User with this email(or username) already exists".into(),
-            ErrorMessage::UserNoLongerExist => {
-                "User belonging to this token no longer exists".into()
+            ErrorMessage::UserNotActivated => {
+                "User is not activated (after registration) or is banned by the admin".into()
             }
             ErrorMessage::EmptyPassword => "Password cannot be empty".into(),
             ErrorMessage::HashingError => "Error while hashing password".into(),
@@ -67,10 +71,12 @@ impl ErrorMessage {
             ErrorMessage::InsufficientPasswordLength(min_length) => {
                 format!("Password must not be less than {} characters", min_length)
             }
+            ErrorMessage::InvalidUserInput => "The user input provided is illegal".into(),
             ErrorMessage::InvalidToken => "Authentication token is invalid or expired".into(),
-            ErrorMessage::TokenNotProvided => {
-                "You are not logged in, please provide token".into()
-            }
+            ErrorMessage::InvalidEmail => "Email format is invalid".into(),
+            ErrorMessage::InvalidPassword => "Password format or length is invalid".into(),
+            ErrorMessage::InvalidUsername => "Username format or length is invalid".into(),
+            ErrorMessage::TokenNotProvided => "You are not logged in, please provide token".into(),
             ErrorMessage::PermissionDenied => {
                 "You are not allowed to perform this action (higher privilege required)".into()
             }
@@ -150,6 +156,10 @@ impl ResponseError for HttpError {
                 message: cloned.message.into(),
             }),
             401 => HttpResponse::Unauthorized().json(Response {
+                status: "fail",
+                message: cloned.message.into(),
+            }),
+            403 => HttpResponse::Forbidden().json(Response {
                 status: "fail",
                 message: cloned.message.into(),
             }),

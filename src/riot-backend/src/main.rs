@@ -1,25 +1,26 @@
+mod app_context;
+mod config;
 mod db;
 mod errors;
 mod handlers;
-mod jwt_utils;
 mod middlewares;
 mod models;
 mod mqtt_instance;
-mod config;
 mod schema;
+mod utils;
 
 use config::Config;
 use db::*;
 
-use diesel_async::AsyncMysqlConnection;
 use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
+use diesel_async::AsyncMysqlConnection;
 use handlers::*;
 
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use log::info;
 use models::*;
 use std::thread;
 use utoipa_swagger_ui::SwaggerUi;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::info;
 
 use actix_files::Files;
 use actix_web::{
@@ -32,25 +33,17 @@ use rumqttc::Event::Incoming;
 use rumqttc::Packet;
 use utoipa::OpenApi;
 
-use crate::{middlewares::RequireAuth, mqtt_instance::mqtt_instancer::MqttDaemon};
-
-#[derive(Clone)]
-pub struct AppState {
-    pub env: Config,
-    pub db: DBClient,
-}
+use crate::{app_context::AppState, mqtt_instance::mqtt_instancer::MqttDaemon};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Run-time env building
-
-    std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 
     let config = Config::init();
     let app_state: AppState = AppState {
         env: config.clone(),
-        db: DBClient::new(&config.database_url).await
+        db: DBClient::new(&config.database_url).await,
     };
 
     // MQTT Listening
@@ -66,13 +59,13 @@ async fn main() -> std::io::Result<()> {
             }
         }
     });
-    
+
     // Generate OpenAPI docs
 
     #[derive(OpenApi)]
     #[openapi(
-        paths(device_info),
-        components(schemas(User), schemas(Device), schemas(Site))
+        paths(user_register, device_info, all_devices),
+        components(schemas(User, Device, Site, RegisterForm, Response))
     )]
     struct ApiDoc;
 
@@ -88,7 +81,9 @@ async fn main() -> std::io::Result<()> {
         let mut async_wrapper = AsyncConnectionWrapper::<AsyncMysqlConnection>::from(conn);
         async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
         Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
-    }).await?.unwrap();
+    })
+    .await?
+    .unwrap();
     info!("Database init finished!");
 
     // Register services (API endpoints and user interfaces routes)
@@ -104,12 +99,17 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api")
-                    .wrap(RequireAuth {
-                        priv_needed: (models::UserPrivilege::Normal as u32).into(),
-                    })
                     //users
                     .service(user_register)
                     .service(user_login)
+                    // Logged-in users only below
+                    // We don't need this middleware anymore since we can use
+                    // `middlewares::RequireAuth` in macro attribute to decorate privileged services
+                    // ```
+                    // .wrap(RequireAuth {
+                    //     priv_needed: (models::UserPrivilege::Normal as u32).into(),
+                    // })
+                    // ```
                     // devices
                     .service(all_devices)
                     .service(device_info)
@@ -128,6 +128,8 @@ async fn main() -> std::io::Result<()> {
                     .service(ws_socket)
                     .service(mqtt_sub)
                     .service(mqtt_unsub),
+                // Admin only below
+                // TODO...
             )
             .service(Files::new("/", "./public").index_file("index.html"))
             .default_service(web::route().to(notfound_404))

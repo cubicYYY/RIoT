@@ -51,7 +51,7 @@ diesel::table! {
         username -> Varchar,
         #[max_length = 256]
         email -> Varchar,
-        #[max_length = 64]
+        #[max_length = 256]
         password -> Varchar,
         privilege -> Unsigned<Integer>,
         #[max_length = 64]
@@ -67,10 +67,4 @@ diesel::joinable!(owns -> site (sid));
 diesel::joinable!(record -> device (did));
 diesel::joinable!(site -> user (uid));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    device,
-    owns,
-    record,
-    site,
-    user,
-);
+diesel::allow_tables_to_appear_in_same_query!(device, owns, record, site, user,);

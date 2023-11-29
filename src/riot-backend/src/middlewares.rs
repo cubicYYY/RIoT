@@ -1,7 +1,6 @@
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized};
 
-
 use actix_web::{http, web, FromRequest, HttpMessage};
 use chrono::NaiveDate;
 use futures_util::future::{ready, LocalBoxFuture, Ready};
@@ -10,8 +9,8 @@ use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use crate::errors::{ErrorMessage, ErrorResponse, HttpError};
-use crate::jwt_utils::parse_token;
 use crate::models::User;
+use crate::utils::jwt::parse_token;
 use crate::AppState;
 
 pub struct AuthenticatedUser(User);
@@ -119,7 +118,7 @@ where
         }
 
         let app_state = req.app_data::<web::Data<AppState>>().unwrap();
-        let user_id = match parse_token(&token.unwrap(), app_state.env.jwt_secret.as_bytes()) {
+        let user_id = match parse_token(&token.unwrap(), app_state.env.jwt_secret) {
             Ok(id) => id,
             Err(e) => {
                 let json_error = ErrorResponse {
@@ -131,38 +130,22 @@ where
         };
 
         // Now the user identity is verified, start authentication checking
-        let _cloned_app_state = app_state.clone();
+        let cloned_app_state = app_state.clone();
         let allowed_roles = self.allowed_roles.clone();
         let srv = Rc::clone(&self.service);
 
         async move {
-            let _user_id = uuid::Uuid::parse_str(user_id.as_str()).expect("UUID parsing failed");
-            // TODO: Check the database
-            // let result = cloned_app_state
-            //     .db_client
-            //     .get_user(Some(user_id.clone()), None, None)
-            //     .await
-            //     .map_err(|e| ErrorInternalServerError(HttpError::server_error(e.to_string())))?;
-            let result = Option::Some(User {
-                id: 1,
-                username: "1".into(),
-                email: "1".into(),
-                password: "1".into(),
-                activated: false,
-                privilege: 200,
-                api_key: Option::None,
-                since: NaiveDate::from_ymd_opt(2000, 6, 1)
-                    .unwrap()
-                    .and_hms_milli_opt(12, 3, 45, 666)
-                    .unwrap(),
-            });
+            let result = cloned_app_state
+                .get_user_by_id(user_id.parse::<u64>().unwrap())
+                .await;
 
-            let user = result.ok_or(ErrorUnauthorized(ErrorResponse {
-                status: "fail".to_string(),
-                message: ErrorMessage::UserNoLongerExist.to_string(),
-            }))?;
+            let user = result.map_err(|_e| {
+                ErrorUnauthorized(ErrorResponse {
+                    status: "fail".to_string(),
+                    message: ErrorMessage::UserNotActivated.to_string(),
+                })
+            })?;
 
-            // Check if user's role matches the required role
             if &user.privilege >= &allowed_roles {
                 req.extensions_mut().insert::<User>(user);
                 let res = srv.call(req).await?;

@@ -21,7 +21,7 @@ impl DBClient {
 
 #[cfg(test)]
 mod tests {
-    use diesel::{sql_query, deserialize::QueryableByName, sql_types::Text};
+    use diesel::{deserialize::QueryableByName, sql_query, sql_types::Text};
     use diesel_async::{pooled_connection::deadpool::Object, AsyncMysqlConnection, RunQueryDsl};
     use futures::future::join_all;
 
@@ -37,7 +37,7 @@ mod tests {
         #[derive(QueryableByName, Debug)]
         struct Raw {
             #[sql_type = "Text"]
-            rstr: String
+            rstr: String,
         }
 
         for _ in 0..10 {
@@ -50,7 +50,7 @@ mod tests {
                     .unwrap();
                 println!("{:?}", res.rstr);
             };
-            
+
             futures.push(query_test);
         }
         println!("{:?}", tokio::join!(join_all(futures)));
