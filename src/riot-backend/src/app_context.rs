@@ -1,13 +1,17 @@
-use crate::models::{Device, Owns, Site, User};
+use crate::models::{Device, Owns, Record, RecordFormDb, RecordFormWeb, Site, User};
 use crate::schema::device::activated;
 use crate::utils::jwt::generate_token;
 use crate::utils::password::get_pwd_hash;
 use crate::{config::Config, db::DBClient};
 use actix_web::cookie::{self, Cookie};
 use chrono::Utc;
+use diesel::dsl::exists;
 use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
-use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    debug_query, BoolExpressionMethods, ExpressionMethods, Insertable, QueryDsl, SelectableHelper,
+    Table,
+};
 use diesel_async::RunQueryDsl;
 use log::debug;
 
@@ -38,6 +42,7 @@ impl AppState {
     ) -> Result<usize, DieselErr> {
         use crate::schema::user::{self, dsl::*};
         // TODO: Corner case: email conflicts with another's username
+        // TODO: Refactor to pass params in form
         // Currently we avoid this situation by restrict the username format in the route handler
         let mut conn = self.db.pool.get().await.unwrap();
         let query = diesel::insert_into(user::table).values((
@@ -107,14 +112,20 @@ impl AppState {
         &self,
         id_: u64,
         activated_: bool,
+        only_for: Option<u64>,
     ) -> Result<usize, DieselErr> {
         use crate::schema::device::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
-        diesel::update(device)
-            .filter(id.eq(id_))
-            .set(activated.eq(activated_))
-            .execute(&mut conn)
-            .await
+        let query = diesel::update(device).filter(id.eq(id_));
+        if let Some(uid_) = only_for {
+            query
+                .filter(uid.eq(uid_))
+                .set(activated.eq(activated_))
+                .execute(&mut conn)
+                .await
+        } else {
+            query.set(activated.eq(activated_)).execute(&mut conn).await
+        }
     }
     pub async fn get_site_by_id(&self, id_: u64) -> Result<Site, DieselErr> {
         use crate::schema::site::dsl::*;
@@ -132,12 +143,46 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    pub async fn update_site_status(&self, id_: u64, activated_: bool) -> Result<usize, DieselErr> {
+    pub async fn update_site_status(
+        &self,
+        id_: u64,
+        activated_: bool,
+        only_for: Option<u64>,
+    ) -> Result<usize, DieselErr> {
         use crate::schema::site::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
-        diesel::update(site)
-            .filter(id.eq(id_))
-            .set(activated.eq(activated_))
+        let query = diesel::update(site).filter(id.eq(id_));
+        if let Some(uid_) = only_for {
+            query
+                .filter(uid.eq(uid_))
+                .set(activated.eq(activated_))
+                .execute(&mut conn)
+                .await
+        } else {
+            query.set(activated.eq(activated_)).execute(&mut conn).await
+        }
+    }
+    pub async fn device_belongs_to(&self, did_: u64, uid_: u64) -> Result<bool, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::select(exists(device.filter(id.eq(did_).and(uid.eq(uid_)))))
+            .get_result(&mut conn)
+            .await
+    }
+    pub async fn get_device_records(&self, did_: u64) -> Result<Vec<Record>, DieselErr> {
+        use crate::schema::record::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        record
+            .select(Record::as_select())
+            .filter(did.eq(did_))
+            .get_results(&mut conn)
+            .await
+    }
+    pub async fn add_device_records(&self, form: &RecordFormDb) -> Result<usize, DieselErr> {
+        use crate::schema::record;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::insert_into(record::table)
+            .values(form)
             .execute(&mut conn)
             .await
     }

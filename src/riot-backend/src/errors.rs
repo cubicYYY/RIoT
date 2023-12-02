@@ -35,6 +35,7 @@ pub enum ErrorMessage {
     UsernameExist,
     UserExist,
     UserNotActivated,
+    DeviceNotFound,
     TokenNotProvided,
     PermissionDenied,
 }
@@ -76,6 +77,7 @@ impl ErrorMessage {
             ErrorMessage::InvalidEmail => "Email format is invalid".into(),
             ErrorMessage::InvalidPassword => "Password format or length is invalid".into(),
             ErrorMessage::InvalidUsername => "Username format or length is invalid".into(),
+            ErrorMessage::DeviceNotFound => "Device not exists or not owned by you".into(),
             ErrorMessage::TokenNotProvided => "You are not logged in, please provide token".into(),
             ErrorMessage::PermissionDenied => {
                 "You are not allowed to perform this action (resources not owned, or higher privilege required)".into()

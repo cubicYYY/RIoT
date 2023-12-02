@@ -115,12 +115,6 @@ where
 
         // No token in Cookie or Header
         if token.is_none() {
-            // let json_error = ErrorResponse {
-            //     status: "fail".to_string(),
-            //     message: ErrorMessage::TokenNotProvided.to_string(),
-            // };
-            // return Box::pin(ready(Err(ErrorUnauthorized(json_error))));
-
             // Just return it so that Option<AuthenticatedUser> will work
             let srv = Rc::clone(&self.service);
             return async move { srv.call(req).await }.boxed_local();

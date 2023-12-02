@@ -67,8 +67,19 @@ async fn main() -> std::io::Result<()> {
 
     #[derive(OpenApi)]
     #[openapi(
-        paths(user_register, user_login, whoami, healthchecker, device_info, all_devices),
-        components(schemas(User, Device, Site, RegisterForm, Response)),
+        paths(
+            user_register,
+            user_login,
+            whoami,
+            healthchecker,
+            owned_devices,
+            device_info,
+            del_device,
+            // upd_device_info,
+            device_records,
+            insert_device_records,
+        ),
+        components(schemas(User, Device, Site, Record, LoginForm, RegisterForm, RecordFormWeb, Response)),
         modifiers(&SecurityJwt)
     )]
     struct ApiDoc;
@@ -138,14 +149,14 @@ async fn main() -> std::io::Result<()> {
                     .service(whoami)
                     // Logged-in users only:
                     // devices
-                    .service(all_devices)
+                    .service(owned_devices)
                     .service(device_info)
                     .service(upd_device_info)
                     .service(device_records)
-                    .service(upd_device_records)
+                    .service(insert_device_records)
                     .service(del_device)
                     // sites
-                    .service(all_sites)
+                    .service(owned_sites)
                     .service(site_info)
                     .service(upd_site_info)
                     .service(site_devices)

@@ -5,14 +5,16 @@ use actix_web::{
     web::{self},
     HttpResponse, Responder, ResponseError,
 };
+use chrono::Utc;
 use diesel::result::{DatabaseErrorKind, Error as DieselErr};
-use log::{debug, error, info};
+use log::{debug, error, info, Record};
 use validator::Validate;
 
 use crate::{
     errors::{ErrorMessage, HttpError},
     middlewares::{AuthenticatedUser, RequireAuth},
-    models::{LoginForm, RegisterForm, Response, User, UserPrivilege},
+    models::{LoginForm, RecordFormDb, RecordFormWeb, RegisterForm, Response, User, UserPrivilege},
+    schema::record::timestamp,
     utils::password::verify,
     AppState,
 };
@@ -68,7 +70,7 @@ async fn user_register(form: web::Form<RegisterForm>, app: web::Data<AppState>) 
         username: username_,
         email: email_,
         password: password_,
-    } = form.0;
+    } = &*form;
 
     match app
         .register_user(
@@ -140,18 +142,18 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
                         message: user.id.to_string(),
                     })
                 } else {
-                    HttpError::new(ErrorMessage::UserNotActivated, 403).error_response()
+                    HttpError::permission_denied(ErrorMessage::UserNotActivated).error_response()
                 }
             } else {
-                HttpError::new(ErrorMessage::WrongCredentials, 403).error_response()
+                HttpError::permission_denied(ErrorMessage::WrongCredentials).error_response()
             }
         }
         Err(DieselErr::NotFound) => {
-            HttpError::new(ErrorMessage::WrongCredentials, 403).error_response()
+            HttpError::permission_denied(ErrorMessage::WrongCredentials).error_response()
         }
         Err(e) => {
             error!("{:?}", e);
-            HttpError::new(ErrorMessage::ServerError, 500).error_response()
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
         }
     }
 }
@@ -190,7 +192,6 @@ async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     path = "/devices",
     responses(
         (status = 200, description = "Devices", body = Vec<Device>),
-        (status = 401, description = "Unauthorized: no valid token provided", body = Response),
         (status = 403, description = "Permission denied", body = Response),
         (status = 500, description = "Internal error, contact website admin", body = Response)
     ),
@@ -204,9 +205,15 @@ async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     "/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
-async fn all_devices(cur_user: AuthenticatedUser) -> impl Responder {
-    // cur_user is extracted by RequireAuth middleware
-    HttpResponse::Ok().body(format!("{:?}", *cur_user))
+async fn owned_devices(cur_user: AuthenticatedUser, app: web::Data<AppState>) -> impl Responder {
+    let devices = app.get_owned_devices(cur_user.id).await;
+    match devices {
+        Ok(devices) => HttpResponse::Ok().json(devices),
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
+        }
+    }
 }
 
 #[utoipa::path(
@@ -237,40 +244,181 @@ async fn device_info(
             if device.uid == cur_user.id {
                 HttpResponse::Ok().json(device)
             } else {
-                HttpError::new(ErrorMessage::PermissionDenied, 403).error_response()
+                HttpError::not_found(ErrorMessage::DeviceNotFound).error_response()
             }
         }
-        Err(DieselErr::NotFound) => HttpError::not_found("Device not exists").error_response(),
+        Err(DieselErr::NotFound) => {
+            HttpError::not_found(ErrorMessage::DeviceNotFound).error_response()
+        }
         Err(e) => {
             error!("{:?}", e);
-            HttpError::new(ErrorMessage::ServerError, 500).error_response()
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
         }
     }
 }
 
-#[delete("/devices/{did}")]
-async fn del_device(path: web::Path<u32>) -> impl Responder {
-    HttpResponse::Ok().body(format!("-del did={}!", path.into_inner()))
+#[utoipa::path(
+    delete,
+    context_path = "/api",
+    path = "/devices/{did}",
+    responses(
+        (status = 200, description = "Delete success", body = Response),
+        (status = 401, description = "Unauthorized", body = Response),
+        (status = 404, description = "Device was not found or the device is not yours \
+        and you do not have enough privilege to delete it", body = Response),
+        (status = 500, description = "Internal error, contact website admin", body = Response)
+    ),
+    security(
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
+    )
+)]
+#[delete(
+    "/devices/{did}",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+async fn del_device(
+    path: web::Path<u64>,
+    app: web::Data<AppState>,
+    cur_user: AuthenticatedUser,
+) -> impl Responder {
+    let did = path.into_inner();
+    match app
+        .update_device_status(did, false, Some(cur_user.id))
+        .await
+    {
+        Ok(1) => HttpResponse::Ok().json(Response {
+            status: "ok",
+            message: "".into(),
+        }),
+        Ok(_) => HttpError::not_found(ErrorMessage::DeviceNotFound).error_response(),
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
+        }
+    }
 }
 
-#[put("/devices/{did}")]
-async fn upd_device_info(path: web::Path<u32>) -> impl Responder {
+#[put(
+    "/devices/{did}",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+async fn upd_device_info(
+    path: web::Path<u64>,
+    app: web::Data<AppState>,
+    cur_user: AuthenticatedUser,
+) -> impl Responder {
+    unimplemented!();
     HttpResponse::Ok().body(format!("+-upd did={}!", path.into_inner()))
 }
 
-#[get("/devices/{did}/records")]
-async fn device_records(path: web::Path<u32>) -> impl Responder {
-    HttpResponse::Ok().body(format!("get rec@did={}!", path.into_inner()))
+#[utoipa::path(
+    get,
+    context_path = "/api",
+    path = "/devices/{did}/records",
+    responses(
+        (status = 200, description = "Delete success", body = Vec<Record>),
+        (status = 401, description = "Unauthorized", body = Response),
+        (status = 404, description = "Device was not found or the device is not yours \
+        and you do not have enough privilege to delete it", body = Response),
+        (status = 500, description = "Internal error, contact website admin", body = Response)
+    ),
+    security(
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
+    )
+)]
+#[get(
+    "/devices/{did}/records",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+async fn device_records(
+    path: web::Path<u64>,
+    app: web::Data<AppState>,
+    cur_user: AuthenticatedUser,
+) -> impl Responder {
+    let did = path.into_inner();
+    if Ok(true) == app.device_belongs_to(did, cur_user.id).await {
+    } else {
+        return HttpError::not_found(ErrorMessage::DeviceNotFound).error_response();
+    }
+    let records = app.get_device_records(did).await;
+    match records {
+        Ok(records) => HttpResponse::Ok().json(records),
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
+        }
+    }
 }
 
-#[post("/devices/{did}/records")]
-async fn upd_device_records(path: web::Path<u32>) -> impl Responder {
-    HttpResponse::Ok().body(format!("+rec did={}!", path.into_inner()))
+#[utoipa::path(
+    post,
+    context_path = "/api",
+    path = "/devices/{did}/records",
+    responses(
+        (status = 200, description = "Insert record success", body = Response),
+        (status = 401, description = "Unauthorized", body = Response),
+        (status = 404, description = "Device was not found or the device is not yours \
+        and you do not have enough privilege to delete it", body = Response),
+        (status = 500, description = "Internal error, contact website admin", body = Response)
+    ),
+    security(
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
+    )
+)]
+#[post(
+    "/devices/{did}/records",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+async fn insert_device_records(
+    path: web::Path<u64>,
+    app: web::Data<AppState>,
+    form: web::Form<RecordFormWeb>,
+    cur_user: AuthenticatedUser,
+) -> impl Responder {
+    let did = path.into_inner();
+    if Ok(true) == app.device_belongs_to(did, cur_user.id).await {
+    } else {
+        return HttpError::not_found(ErrorMessage::DeviceNotFound).error_response();
+    }
+    let actix_web::web::Form(RecordFormWeb {
+        payload: payload_,
+        latitude: latitude_,
+        longitude: longitude_,
+        timestamp: timestamp_,
+    }) = form;
+
+    // If timestamp is not set, fill it with server time
+    let timestamp_ = timestamp_.unwrap_or(Utc::now().naive_utc());
+
+    let db_form = RecordFormDb {
+        payload: payload_,
+        latitude: latitude_,
+        longitude: longitude_,
+        timestamp: timestamp_,
+    };
+
+    match app.add_device_records(&db_form).await {
+        Ok(1) => HttpResponse::Ok().json(Response {
+            status: "ok",
+            message: "".into(),
+        }),
+        Ok(_) => {
+            error!("This should never happened!");
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
+        }
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
+        }
+    }
 }
 
 // sites
 #[get("/sites")]
-async fn all_sites() -> impl Responder {
+async fn owned_sites() -> impl Responder {
     HttpResponse::Ok().body("ALL SITES!")
 }
 

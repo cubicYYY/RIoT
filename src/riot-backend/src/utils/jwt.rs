@@ -60,7 +60,7 @@ mod tests {
         let user_id = "1";
         let secret = b"RiotSecret!";
 
-        let token = generate_token(&user_id, secret, 60 * 60).unwrap();
+        let token = generate_token(&user_id, secret, 60 * 60 * 24).unwrap();
         let decoded_user_id = parse_token(&token, secret).unwrap();
         println!("{:?}", token);
         assert_eq!(decoded_user_id, user_id);

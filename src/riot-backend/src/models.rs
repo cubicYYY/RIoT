@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
 
-use chrono::naive::serde::ts_milliseconds;
+use chrono::naive::serde::{ts_microseconds_option, ts_milliseconds};
 use diesel::deserialize::Queryable;
 use diesel::mysql::Mysql;
 use diesel::{Insertable, Selectable};
@@ -15,6 +15,30 @@ use utoipa::ToSchema;
 pub struct LoginForm {
     pub account: String,
     pub password: String,
+}
+#[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
+pub struct RecordFormWeb {
+    pub payload: Vec<u8>,
+    /// Precision: 64 bits
+    pub latitude: Option<f64>,
+    /// Precision: 64 bits
+    pub longitude: Option<f64>,
+    /// Precision: milliseconds
+    #[serde(with = "ts_microseconds_option")]
+    pub timestamp: Option<NaiveDateTime>,
+}
+
+#[derive(Clone, Debug, Insertable)]
+#[diesel(table_name = crate::schema::record)]
+#[diesel(check_for_backend(Mysql))]
+pub struct RecordFormDb {
+    pub payload: Vec<u8>,
+    /// Precision: 64 bits
+    pub latitude: Option<f64>,
+    /// Precision: 64 bits
+    pub longitude: Option<f64>,
+    /// Precision: milliseconds
+    pub timestamp: NaiveDateTime,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
@@ -92,7 +116,7 @@ pub enum UserPrivilege {
     SuperAdmin = 1024,
 }
 
-#[derive(ToSchema, Serialize, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(Mysql))]
 pub struct User {
@@ -108,7 +132,7 @@ pub struct User {
     pub activated: bool,
 }
 
-#[derive(ToSchema, Serialize, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Device {
@@ -137,7 +161,7 @@ pub struct Site {
     pub activated: bool,
 }
 
-#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::record)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Record {
@@ -150,6 +174,7 @@ pub struct Record {
     /// Precision: 64 bits
     longitude: Option<f64>,
     /// Precision: milliseconds
+    #[serde(with = "ts_milliseconds")]
     timestamp: NaiveDateTime,
 }
 
