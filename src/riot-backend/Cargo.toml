@@ -13,7 +13,7 @@ utoipa-swagger-ui = {version = "4", features = ["actix-web"]}
 rumqttd = "0.18.0"
 rumqttc = "0.23.0"
 lazy_static = "1.4.0"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["full"] }
 serde = "1.0.193"
 jsonwebtoken = "9.1.0"
@@ -36,3 +36,9 @@ features = [
     "fast-rng",          # Use a faster (but still sufficiently random) RNG
     "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ]
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3

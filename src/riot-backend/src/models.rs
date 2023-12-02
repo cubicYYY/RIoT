@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 
+use chrono::naive::serde::ts_milliseconds;
 use diesel::deserialize::Queryable;
 use diesel::mysql::Mysql;
 use diesel::{Insertable, Selectable};
@@ -78,8 +79,9 @@ pub struct Response {
 /// Handy enum to set a proper privilege value, only for convenience, not a strong type constraint.
 /// Reserved values for future uses.
 pub enum UserPrivilege {
+    Everyone = 0,
     /// Banned or self-destructed account. No op is allowed.
-    Suspended = 0,
+    Suspended = 1,
     /// Full access of self-owned data
     Normal = 4,
     /// Full access of self-owned data + Site data read permission, no modification is allowed
@@ -90,7 +92,7 @@ pub enum UserPrivilege {
     SuperAdmin = 1024,
 }
 
-#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Serialize, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(Mysql))]
 pub struct User {
@@ -101,23 +103,26 @@ pub struct User {
     pub privilege: u32,
     pub api_key: Option<String>,
     /// Precision: milliseconds
+    #[serde(with = "ts_milliseconds")]
     pub since: NaiveDateTime,
     pub activated: bool,
 }
 
-#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Serialize, Queryable, Selectable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Device {
-    id: u64,
-    uid: u64,
-    name: String,
-    desc: Option<String>,
-    dtype: u32, // TODO: Should we just use a string to describe it?
+    pub id: u64,
+    pub uid: u64,
+    pub name: String,
+    pub desc: Option<String>,
+    pub dtype: u32, // TODO: Should we just use a string to describe it?
     /// Precision: milliseconds
-    since: NaiveDateTime,
+    #[serde(with = "ts_milliseconds")]
+    pub since: NaiveDateTime,
     /// Precision: milliseconds
-    last_update: NaiveDateTime,
+    #[serde(with = "ts_milliseconds")]
+    pub last_update: NaiveDateTime,
     pub activated: bool,
 }
 

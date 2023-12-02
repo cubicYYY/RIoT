@@ -36,7 +36,7 @@ mod tests {
 
         #[derive(QueryableByName, Debug)]
         struct Raw {
-            #[sql_type = "Text"]
+            #[diesel(sql_type = Text)]
             rstr: String,
         }
 

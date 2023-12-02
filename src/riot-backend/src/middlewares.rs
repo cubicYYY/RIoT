@@ -2,21 +2,21 @@ use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized};
 
 use actix_web::{http, web, FromRequest, HttpMessage};
-use chrono::NaiveDate;
+
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 use futures_util::FutureExt;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use crate::errors::{ErrorMessage, ErrorResponse, HttpError};
-use crate::models::User;
+use crate::models::{User, UserPrivilege};
 use crate::utils::jwt::parse_token;
 use crate::AppState;
 
 pub struct AuthenticatedUser(User);
 
 impl FromRequest for AuthenticatedUser {
-    type Error = actix_web::Error;
+    type Error = HttpError;
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(
@@ -26,9 +26,9 @@ impl FromRequest for AuthenticatedUser {
         let value = req.extensions().get::<User>().cloned();
         let result = match value {
             Some(user) => Ok(AuthenticatedUser(user)),
-            None => Err(ErrorInternalServerError(HttpError::server_error(
-                "Authentication Error",
-            ))),
+            None => Err(HttpError::permission_denied(
+                "Authentication Error: You are not logged-in an account with enough privilege to perform this.",
+            )),
         };
         ready(result)
     }
@@ -52,6 +52,11 @@ impl RequireAuth {
             priv_needed: Rc::new(priv_level),
         }
     }
+    pub fn no_auth() -> Self {
+        RequireAuth {
+            priv_needed: Rc::new(UserPrivilege::Everyone as u32),
+        }
+    }
 }
 
 impl<S> Transform<S, ServiceRequest> for RequireAuth
@@ -71,14 +76,14 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthMiddleware {
             service: Rc::new(service),
-            allowed_roles: self.priv_needed.clone(),
+            least_priv: self.priv_needed.clone(),
         }))
     }
 }
 
 pub struct AuthMiddleware<S> {
     service: Rc<S>,
-    allowed_roles: Rc<u32>,
+    least_priv: Rc<u32>,
 }
 
 impl<S> Service<ServiceRequest> for AuthMiddleware<S>
@@ -110,11 +115,15 @@ where
 
         // No token in Cookie or Header
         if token.is_none() {
-            let json_error = ErrorResponse {
-                status: "fail".to_string(),
-                message: ErrorMessage::TokenNotProvided.to_string(),
-            };
-            return Box::pin(ready(Err(ErrorUnauthorized(json_error))));
+            // let json_error = ErrorResponse {
+            //     status: "fail".to_string(),
+            //     message: ErrorMessage::TokenNotProvided.to_string(),
+            // };
+            // return Box::pin(ready(Err(ErrorUnauthorized(json_error))));
+
+            // Just return it so that Option<AuthenticatedUser> will work
+            let srv = Rc::clone(&self.service);
+            return async move { srv.call(req).await }.boxed_local();
         }
 
         let app_state = req.app_data::<web::Data<AppState>>().unwrap();
@@ -131,7 +140,7 @@ where
 
         // Now the user identity is verified, start authentication checking
         let cloned_app_state = app_state.clone();
-        let allowed_roles = self.allowed_roles.clone();
+        let least_priv = self.least_priv.clone();
         let srv = Rc::clone(&self.service);
 
         async move {
@@ -146,7 +155,7 @@ where
                 })
             })?;
 
-            if &user.privilege >= &allowed_roles {
+            if &user.privilege >= &least_priv {
                 req.extensions_mut().insert::<User>(user);
                 let res = srv.call(req).await?;
                 Ok(res)

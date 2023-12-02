@@ -57,10 +57,10 @@ mod tests {
 
     #[test]
     fn test_create_and_decoded_valid_token() {
-        let user_id = "illegal_id";
+        let user_id = "1";
         let secret = b"RiotSecret!";
 
-        let token = generate_token(&user_id, secret, 60).unwrap();
+        let token = generate_token(&user_id, secret, 60 * 60).unwrap();
         let decoded_user_id = parse_token(&token, secret).unwrap();
         println!("{:?}", token);
         assert_eq!(decoded_user_id, user_id);

@@ -1,33 +1,45 @@
-use std::{error::Error, fs};
+use std::fs;
 
 use actix_web::{
-    cookie, delete, get, post, put,
+    delete, get, post, put,
     web::{self},
     HttpResponse, Responder, ResponseError,
 };
 use diesel::result::{DatabaseErrorKind, Error as DieselErr};
-use log::{error, info};
+use log::{debug, error, info};
 use validator::Validate;
 
 use crate::{
     errors::{ErrorMessage, HttpError},
     middlewares::{AuthenticatedUser, RequireAuth},
-    models::{LoginForm, RegisterForm, Response, UserPrivilege},
-    utils::{
-        jwt::generate_token,
-        password::{get_pwd_hash, verify},
-    },
+    models::{LoginForm, RegisterForm, Response, User, UserPrivilege},
+    utils::password::verify,
     AppState,
 };
 
 // ROUTES
+// health checker
+#[utoipa::path(
+    get,
+    context_path = "/api",
+    tag = "RIoT",
+    path = "/healthchecker",
+    responses(
+        (status = 200, description = "Always 'Ok'", body = String),
+    ),
+    params(),
+)]
+#[get("/healthchecker")]
+async fn healthchecker() -> impl Responder {
+    HttpResponse::Ok().content_type("text/plain").body("Ok")
+}
 
 // account reg/login
 #[utoipa::path(
     post,
     context_path = "/api",
     path = "/accounts/register",
-    tag = "Register Account",
+    tag = "User",
     request_body(
         content = RegisterForm,
         description = "Register form", 
@@ -41,7 +53,8 @@ use crate::{
     ),
     params(),
     security(
-        ("token" = [])
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
     )
 )]
 #[post("/accounts/register")]
@@ -84,7 +97,7 @@ async fn user_register(form: web::Form<RegisterForm>, app: web::Data<AppState>) 
     post,
     context_path = "/api",
     path = "/accounts/login",
-    tag = "Login Account",
+    tag = "User",
     request_body(
         content = LoginForm,
         description = "Login form", 
@@ -97,7 +110,8 @@ async fn user_register(form: web::Form<RegisterForm>, app: web::Data<AppState>) 
     ),
     params(),
     security(
-        ("token" = [])
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
     )
 )]
 #[post("/accounts/login")]
@@ -112,6 +126,12 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
 
     match app.get_user_by_username_or_email(&account_).await {
         Ok(user) => {
+            debug!(
+                "{:?}, provided={:?}--{:?}",
+                user,
+                account_.as_bytes(),
+                password_.as_bytes()
+            );
             if verify(&user.password, password_.as_bytes()) {
                 let jwt_cookie = app.get_jwt_cookie(user.id);
                 if user.activated {
@@ -136,6 +156,32 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
     }
 }
 
+#[utoipa::path(
+    get,
+    context_path = "/api",
+    path = "/whoami",
+    tag = "User",
+    responses(
+        (status = 200, description = "User struct", body = User),
+        (status = 202, description = "Not logged in", body = Response),
+    ),
+    params(),
+    security(
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
+    )
+)]
+#[get("/whoami", wrap = "RequireAuth::no_auth()")]
+async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responder {
+    match cur_user {
+        Some(user) => HttpResponse::Ok().json(&*user),
+        None => HttpResponse::Accepted().json(Response {
+            status: "ok",
+            message: "You are not logged-in.".into(),
+        }),
+    }
+}
+
 // devices
 
 #[utoipa::path(
@@ -150,7 +196,8 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
     ),
     params(),
     security(
-        ("token" = ["JWT"])
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
     )
 )]
 #[get(
@@ -159,7 +206,7 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
 )]
 async fn all_devices(cur_user: AuthenticatedUser) -> impl Responder {
     // cur_user is extracted by RequireAuth middleware
-    HttpResponse::Ok().body(format!("ALL DEVICE!{}", cur_user.privilege))
+    HttpResponse::Ok().body(format!("{:?}", *cur_user))
 }
 
 #[utoipa::path(
@@ -170,14 +217,35 @@ async fn all_devices(cur_user: AuthenticatedUser) -> impl Responder {
             (status = 200, description = "Device info", body = Device),
             (status = NOT_FOUND, description = "Device was not found")
         ),
-        params(),
         security(
-            ("token" = [])
+            ("jwt_header" = []),
+            ("jwt_cookie" = [])
         )
     )]
-#[get("/devices/{did}")]
-async fn device_info(path: web::Path<u32>) -> impl Responder {
-    HttpResponse::Ok().body(format!("*get did={}!", path.into_inner()))
+#[get(
+    "/devices/{did}",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+async fn device_info(
+    path: web::Path<u64>,
+    app: web::Data<AppState>,
+    cur_user: AuthenticatedUser,
+) -> impl Responder {
+    let did = path.into_inner();
+    match app.get_device_by_id(did).await {
+        Ok(device) => {
+            if device.uid == cur_user.id {
+                HttpResponse::Ok().json(device)
+            } else {
+                HttpError::new(ErrorMessage::PermissionDenied, 403).error_response()
+            }
+        }
+        Err(DieselErr::NotFound) => HttpError::not_found("Device not exists").error_response(),
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::new(ErrorMessage::ServerError, 500).error_response()
+        }
+    }
 }
 
 #[delete("/devices/{did}")]

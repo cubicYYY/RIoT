@@ -31,7 +31,10 @@ use actix_web::{
 
 use rumqttc::Event::Incoming;
 use rumqttc::Packet;
-use utoipa::OpenApi;
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
+};
 
 use crate::{app_context::AppState, mqtt_instance::mqtt_instancer::MqttDaemon};
 
@@ -64,11 +67,39 @@ async fn main() -> std::io::Result<()> {
 
     #[derive(OpenApi)]
     #[openapi(
-        paths(user_register, device_info, all_devices),
-        components(schemas(User, Device, Site, RegisterForm, Response))
+        paths(user_register, user_login, whoami, healthchecker, device_info, all_devices),
+        components(schemas(User, Device, Site, RegisterForm, Response)),
+        modifiers(&SecurityJwt)
     )]
     struct ApiDoc;
+    struct SecurityJwt;
 
+    impl Modify for SecurityJwt {
+        fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+            let components = openapi.components.as_mut().unwrap();
+            components.add_security_scheme(
+                "jwt_header",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .description(Some("JWT token in HTTP `Authorization` header."))
+                        .build(),
+                ),
+            );
+            components.add_security_scheme(
+                "jwt_cookie",
+                SecurityScheme::ApiKey(ApiKey::Cookie(
+                    ApiKeyValue::with_description(
+                        "token".to_string(),
+                        "JWT token saved in Cookie (you may need to add the \
+                            `token` cookie by yourself via a browser extension like Cookie-Editor), \
+                            also available in HTTP `Authorization` header (Bearer format)".to_string()
+                    )
+                ))
+            );
+        }
+    }
     let openapi = ApiDoc::openapi();
 
     // SQL init migration
@@ -83,7 +114,7 @@ async fn main() -> std::io::Result<()> {
         Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
     })
     .await?
-    .unwrap();
+    .expect("MySQL Database Connection Failed!");
     info!("Database init finished!");
 
     // Register services (API endpoints and user interfaces routes)
@@ -99,17 +130,13 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api")
+                    // RIoT site
+                    .service(healthchecker)
                     //users
                     .service(user_register)
                     .service(user_login)
-                    // Logged-in users only below
-                    // We don't need this middleware anymore since we can use
-                    // `middlewares::RequireAuth` in macro attribute to decorate privileged services
-                    // ```
-                    // .wrap(RequireAuth {
-                    //     priv_needed: (models::UserPrivilege::Normal as u32).into(),
-                    // })
-                    // ```
+                    .service(whoami)
+                    // Logged-in users only:
                     // devices
                     .service(all_devices)
                     .service(device_info)
@@ -128,7 +155,7 @@ async fn main() -> std::io::Result<()> {
                     .service(ws_socket)
                     .service(mqtt_sub)
                     .service(mqtt_unsub),
-                // Admin only below
+                // Admin only:
                 // TODO...
             )
             .service(Files::new("/", "./public").index_file("index.html"))

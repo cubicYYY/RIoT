@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `privilege` INT UNSIGNED DEFAULT 0 NOT NULL,
     `api_key` VARCHAR(64) DEFAULT NULL,
     `since` DATETIME(3) NOT NULL,
-    `activated` BOOLEAN DEFAULT FALSE NOT NULL,
+    `activated` BOOLEAN DEFAULT FALSE NOT NULL, -- User is not activated until checking
     INDEX username_index (`username`),
     INDEX email_index (`email`),
     INDEX api_index (`api_key`)
@@ -21,16 +21,16 @@ CREATE TABLE IF NOT EXISTS `device` (
     `dtype` INT UNSIGNED DEFAULT 0 NOT NULL,
     `since` DATETIME(3) NOT NULL,
     `last_update` DATETIME(3) NOT NULL,
-    `activated` BOOLEAN DEFAULT FALSE NOT NULL,
-    FOREIGN KEY (`uid`) REFERENCES `user`(id)
+    `activated` BOOLEAN DEFAULT TRUE NOT NULL,
+    FOREIGN KEY (`uid`) REFERENCES `user`(id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS `site` (
     `id` SERIAL PRIMARY KEY,
     `uid` BIGINT UNSIGNED NOT NULL,
     `name` VARCHAR(255) NOT NULL,
     `desc` TEXT,
-    `activated` BOOLEAN DEFAULT FALSE NOT NULL,
-    FOREIGN KEY (`uid`) REFERENCES `user`(id)
+    `activated` BOOLEAN DEFAULT TRUE NOT NULL,
+    FOREIGN KEY (`uid`) REFERENCES `user`(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS `record` (
@@ -40,13 +40,13 @@ CREATE TABLE IF NOT EXISTS `record` (
     `latitude` DOUBLE,
     `longitude` DOUBLE,
     `timestamp` DATETIME(3) NOT NULL,
-    FOREIGN KEY (`did`) REFERENCES `device`(id)
+    FOREIGN KEY (`did`) REFERENCES `device`(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS `owns` (
     `sid` BIGINT UNSIGNED NOT NULL,
     `did` BIGINT UNSIGNED NOT NULL,
     PRIMARY KEY (`sid`, `did`),
-    FOREIGN KEY (`sid`) REFERENCES `site`(id),
-    FOREIGN KEY (`did`) REFERENCES `device`(id)
+    FOREIGN KEY (`sid`) REFERENCES `site`(id) ON DELETE CASCADE,
+    FOREIGN KEY (`did`) REFERENCES `device`(id) ON DELETE CASCADE
 );

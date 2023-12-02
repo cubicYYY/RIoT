@@ -78,7 +78,7 @@ impl ErrorMessage {
             ErrorMessage::InvalidUsername => "Username format or length is invalid".into(),
             ErrorMessage::TokenNotProvided => "You are not logged in, please provide token".into(),
             ErrorMessage::PermissionDenied => {
-                "You are not allowed to perform this action (higher privilege required)".into()
+                "You are not allowed to perform this action (resources not owned, or higher privilege required)".into()
             }
         }
     }
@@ -109,6 +109,13 @@ impl HttpError {
         HttpError {
             message: message.into(),
             status: 400,
+        }
+    }
+
+    pub fn permission_denied(message: impl Into<String>) -> Self {
+        HttpError {
+            message: message.into(),
+            status: 403,
         }
     }
 

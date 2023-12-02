@@ -1,5 +1,5 @@
-use crate::models::{User, UserPrivilege};
-use crate::schema::user::{self, dsl::*};
+use crate::models::{Device, Owns, Site, User};
+use crate::schema::device::activated;
 use crate::utils::jwt::generate_token;
 use crate::utils::password::get_pwd_hash;
 use crate::{config::Config, db::DBClient};
@@ -18,6 +18,7 @@ pub struct AppState {
 }
 
 // User ops
+// TODO: Refactor to group operations
 impl AppState {
     pub fn get_jwt_cookie(&self, uid: u64) -> Cookie {
         let jwt_token =
@@ -35,6 +36,7 @@ impl AppState {
         password_: &str,
         privilege_level: u32,
     ) -> Result<usize, DieselErr> {
+        use crate::schema::user::{self, dsl::*};
         // TODO: Corner case: email conflicts with another's username
         // Currently we avoid this situation by restrict the username format in the route handler
         let mut conn = self.db.pool.get().await.unwrap();
@@ -49,6 +51,7 @@ impl AppState {
         query.execute(&mut conn).await
     }
     pub async fn get_user_by_username_or_email(&self, keyword: &str) -> Result<User, DieselErr> {
+        use crate::schema::user::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
         let query = user
             .select(User::as_select())
@@ -57,9 +60,85 @@ impl AppState {
         query.first(&mut conn).await
     }
     pub async fn get_user_by_id(&self, id_: u64) -> Result<User, DieselErr> {
+        use crate::schema::user::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
-        let query = user.select(User::as_select()).filter(id.eq(id_));
-        debug!("{}", debug_query::<Mysql, _>(&query).to_string());
-        query.first(&mut conn).await
+        user.select(User::as_select())
+            .filter(id.eq(id_))
+            .first(&mut conn)
+            .await
+    }
+    pub async fn get_user_by_api_key(&self, api_key_: &str) -> Result<User, DieselErr> {
+        use crate::schema::user::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        user.select(User::as_select())
+            .filter(api_key.eq(api_key_))
+            .first(&mut conn)
+            .await
+    }
+    /// Ban/activate a user
+    pub async fn update_user_status(&self, id_: u64, activated_: bool) -> Result<usize, DieselErr> {
+        use crate::schema::user::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::update(user)
+            .filter(id.eq(id_))
+            .set(activated.eq(activated_))
+            .execute(&mut conn)
+            .await
+    }
+    pub async fn get_device_by_id(&self, id_: u64) -> Result<Device, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        device
+            .select(Device::as_select())
+            .filter(id.eq(id_))
+            .first(&mut conn)
+            .await
+    }
+    pub async fn get_owned_devices(&self, uid_: u64) -> Result<Vec<Device>, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        device
+            .select(Device::as_select())
+            .filter(uid.eq(uid_))
+            .get_results(&mut conn)
+            .await
+    }
+    pub async fn update_device_status(
+        &self,
+        id_: u64,
+        activated_: bool,
+    ) -> Result<usize, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::update(device)
+            .filter(id.eq(id_))
+            .set(activated.eq(activated_))
+            .execute(&mut conn)
+            .await
+    }
+    pub async fn get_site_by_id(&self, id_: u64) -> Result<Site, DieselErr> {
+        use crate::schema::site::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        site.select(Site::as_select())
+            .filter(id.eq(id_))
+            .first(&mut conn)
+            .await
+    }
+    pub async fn get_owned_sites(&self, uid_: u64) -> Result<Vec<Site>, DieselErr> {
+        use crate::schema::site::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        site.select(Site::as_select())
+            .filter(uid.eq(uid_))
+            .get_results(&mut conn)
+            .await
+    }
+    pub async fn update_site_status(&self, id_: u64, activated_: bool) -> Result<usize, DieselErr> {
+        use crate::schema::site::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::update(site)
+            .filter(id.eq(id_))
+            .set(activated.eq(activated_))
+            .execute(&mut conn)
+            .await
     }
 }
