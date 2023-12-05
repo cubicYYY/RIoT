@@ -3,7 +3,8 @@ use chrono::NaiveDateTime;
 use chrono::naive::serde::{ts_microseconds_option, ts_milliseconds};
 use diesel::deserialize::Queryable;
 use diesel::mysql::Mysql;
-use diesel::{Insertable, Selectable};
+use diesel::query_builder::AsChangeset;
+use diesel::{Identifiable, Insertable, Selectable};
 use validator::{Validate, ValidationError};
 
 use serde::{Deserialize, Serialize};
@@ -13,32 +14,29 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
 pub struct LoginForm {
+    #[serde(alias = "username")]
+    #[serde(alias = "email")]
     pub account: String,
     pub password: String,
 }
+
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub struct RecordFormWeb {
-    pub payload: Vec<u8>,
+pub struct NewDeviceForm {
+    pub name: String,
+    pub desc: Option<String>,
+    pub dtype: u32,
     /// Precision: 64 bits
     pub latitude: Option<f64>,
     /// Precision: 64 bits
     pub longitude: Option<f64>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
+pub struct RecordForm {
+    pub payload: Vec<u8>,
     /// Precision: milliseconds
     #[serde(with = "ts_microseconds_option")]
     pub timestamp: Option<NaiveDateTime>,
-}
-
-#[derive(Clone, Debug, Insertable)]
-#[diesel(table_name = crate::schema::record)]
-#[diesel(check_for_backend(Mysql))]
-pub struct RecordFormDb {
-    pub payload: Vec<u8>,
-    /// Precision: 64 bits
-    pub latitude: Option<f64>,
-    /// Precision: 64 bits
-    pub longitude: Option<f64>,
-    /// Precision: milliseconds
-    pub timestamp: NaiveDateTime,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
@@ -47,7 +45,7 @@ pub struct RegisterForm {
         length(min = 4, max = 16, message = "Username must be 4-64 characters"),
         custom = "validate_username"
     )]
-    pub username: String,
+    pub username: Option<String>,
     #[validate(email)]
     pub email: String,
     #[validate(
@@ -90,6 +88,17 @@ fn validate_pwd(password: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
+#[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
+pub struct DeviceForm {
+    pub name: String,
+    pub desc: Option<String>,
+    pub dtype: u32,
+    /// Precision: 64 bits
+    pub latitude: Option<f64>,
+    /// Precision: 64 bits
+    pub longitude: Option<f64>,
+}
+
 // HTTP Responses
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -116,7 +125,7 @@ pub enum UserPrivilege {
     SuperAdmin = 1024,
 }
 
-#[derive(ToSchema, Serialize, Deserialize, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Identifiable, Clone, Debug)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(Mysql))]
 pub struct User {
@@ -132,7 +141,32 @@ pub struct User {
     pub activated: bool,
 }
 
-#[derive(ToSchema, Serialize, Deserialize, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Insertable)]
+#[diesel(table_name = crate::schema::user)]
+#[diesel(check_for_backend(Mysql))]
+pub struct NewUser<'a> {
+    pub username: &'a str,
+    pub email: &'a str,
+    #[column_name = "password"]
+    pub hashed_password: &'a str,
+    pub privilege: u32,
+}
+
+#[derive(Clone, Debug, AsChangeset, Identifiable)]
+#[diesel(table_name = crate::schema::user)]
+#[diesel(check_for_backend(Mysql))]
+pub struct UpdateUser<'a> {
+    pub id: u64,
+    pub username: Option<&'a str>,
+    pub email: Option<&'a str>,
+    #[column_name = "password"]
+    pub hashed_password: Option<&'a str>,
+    pub privilege: Option<u32>,
+    pub activated: Option<bool>,
+    pub api_key: Option<Option<&'a str>>,
+}
+
+#[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Identifiable, Clone, Debug)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Device {
@@ -141,6 +175,10 @@ pub struct Device {
     pub name: String,
     pub desc: Option<String>,
     pub dtype: u32, // TODO: Should we just use a string to describe it?
+    /// Precision: 64 bits
+    pub latitude: Option<f64>,
+    /// Precision: 64 bits
+    pub longitude: Option<f64>,
     /// Precision: milliseconds
     #[serde(with = "ts_milliseconds")]
     pub since: NaiveDateTime,
@@ -150,18 +188,50 @@ pub struct Device {
     pub activated: bool,
 }
 
-#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Insertable)]
+#[diesel(table_name = crate::schema::device)]
+#[diesel(check_for_backend(Mysql))]
+pub struct NewDevice<'a> {
+    pub uid: u64,
+    pub name: &'a str,
+    pub desc: Option<&'a str>,
+    pub dtype: u32,
+    /// Precision: 64 bits
+    pub latitude: Option<f64>,
+    /// Precision: 64 bits
+    pub longitude: Option<f64>,
+}
+
+#[derive(ToSchema, AsChangeset, Clone, Debug, Identifiable)]
+#[diesel(table_name = crate::schema::device)]
+#[diesel(check_for_backend(Mysql))]
+pub struct UpdateDevice<'a> {
+    pub id: u64,
+    pub name: Option<&'a str>,
+    pub desc: Option<Option<&'a str>>,
+    /// Precision: 64 bits
+    pub latitude: Option<Option<f64>>,
+    /// Precision: 64 bits
+    pub longitude: Option<Option<f64>>,
+    /// Precision: milliseconds
+    pub last_update: Option<&'a NaiveDateTime>,
+    pub activated: Option<bool>,
+}
+
+#[derive(ToSchema, Selectable, Queryable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::site)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Site {
-    id: u64,
-    uid: u64,
-    name: String,
-    desc: Option<String>,
+    pub id: u64,
+    pub uid: u64,
+    pub name: String,
+    pub desc: Option<String>,
     pub activated: bool,
 }
 
-#[derive(ToSchema, Serialize, Deserialize, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(
+    ToSchema, Serialize, Deserialize, Selectable, Queryable, Insertable, Identifiable, Clone, Debug,
+)]
 #[diesel(table_name = crate::schema::record)]
 #[diesel(check_for_backend(Mysql))]
 pub struct Record {
@@ -169,18 +239,26 @@ pub struct Record {
     /// Device id
     did: u64,
     payload: Vec<u8>,
-    /// Precision: 64 bits
-    latitude: Option<f64>,
-    /// Precision: 64 bits
-    longitude: Option<f64>,
     /// Precision: milliseconds
     #[serde(with = "ts_milliseconds")]
     timestamp: NaiveDateTime,
 }
 
-#[derive(ToSchema, Queryable, Selectable, Insertable, Clone, Debug)]
+#[derive(Serialize, Deserialize, ToSchema, Clone, Debug, Insertable)]
+#[diesel(table_name = crate::schema::record)]
+#[diesel(check_for_backend(Mysql))]
+pub struct NewRecord {
+    pub did: u64,
+    pub payload: Vec<u8>,
+    /// Precision: milliseconds
+    #[serde(with = "ts_microseconds_option")]
+    pub timestamp: Option<NaiveDateTime>,
+}
+
+#[derive(ToSchema, Queryable, Selectable, Insertable, Identifiable, Clone, Debug)]
 #[diesel(table_name = crate::schema::owns)]
 #[diesel(check_for_backend(Mysql))]
+#[diesel(primary_key(sid, did))]
 pub struct Owns {
     /// Site id
     sid: u64,

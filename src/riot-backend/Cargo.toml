@@ -37,8 +37,24 @@ features = [
     "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ]
 
+[profile.dev.package."*"]
+# Set the default for dependencies in Development mode.
+opt-level = 3
+
 [profile.dev]
-opt-level = 0
+# Turn on a small amount of optimisation in Development mode.
+opt-level = 1
 
 [profile.release]
+# panic = "abort"
 opt-level = 3
+lto = true
+strip = true
+codegen-units = 1 # No parallel compiling for better binary size and a bit of performance
+
+[profile.perf]
+inherits = "release"
+strip = false
+codegen-units = 16
+debug = true
+jemalloc = false

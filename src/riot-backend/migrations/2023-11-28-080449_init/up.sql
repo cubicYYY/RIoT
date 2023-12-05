@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `password` VARCHAR(256) NOT NULL,
     `privilege` INT UNSIGNED DEFAULT 0 NOT NULL,
     `api_key` VARCHAR(64) DEFAULT NULL,
-    `since` DATETIME(3) NOT NULL,
+    `since` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `activated` BOOLEAN DEFAULT FALSE NOT NULL, -- User is not activated until checking
     INDEX username_index (`username`),
     INDEX email_index (`email`),
@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS `device` (
     `name` VARCHAR(255) NOT NULL,
     `desc` TEXT DEFAULT NULL,
     `dtype` INT UNSIGNED DEFAULT 0 NOT NULL,
-    `since` DATETIME(3) NOT NULL,
-    `last_update` DATETIME(3) NOT NULL,
+    `latitude` DOUBLE,
+    `longitude` DOUBLE,
+    `since` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `activated` BOOLEAN DEFAULT TRUE NOT NULL,
     FOREIGN KEY (`uid`) REFERENCES `user`(id) ON DELETE CASCADE
 );
@@ -37,9 +39,7 @@ CREATE TABLE IF NOT EXISTS `record` (
     `id` SERIAL PRIMARY KEY,
     `did` BIGINT UNSIGNED NOT NULL,
     `payload` BINARY NOT NULL,
-    `latitude` DOUBLE,
-    `longitude` DOUBLE,
-    `timestamp` DATETIME(3) NOT NULL,
+    `timestamp` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (`did`) REFERENCES `device`(id) ON DELETE CASCADE
 );
 

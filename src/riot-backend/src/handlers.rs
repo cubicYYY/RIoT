@@ -13,9 +13,12 @@ use validator::Validate;
 use crate::{
     errors::{ErrorMessage, HttpError},
     middlewares::{AuthenticatedUser, RequireAuth},
-    models::{LoginForm, RecordFormDb, RecordFormWeb, RegisterForm, Response, User, UserPrivilege},
+    models::{
+        DeviceForm, LoginForm, NewDevice, NewRecord, NewUser, RecordForm, RegisterForm, Response,
+        UpdateDevice, User, UserPrivilege,
+    },
     schema::record::timestamp,
-    utils::password::verify,
+    utils::password::{get_pwd_hash, verify},
     AppState,
 };
 
@@ -41,7 +44,7 @@ async fn healthchecker() -> impl Responder {
     post,
     context_path = "/api",
     path = "/accounts/register",
-    tag = "User",
+    tag = "Account",
     request_body(
         content = RegisterForm,
         description = "Register form", 
@@ -67,20 +70,19 @@ async fn user_register(form: web::Form<RegisterForm>, app: web::Data<AppState>) 
     }
 
     let RegisterForm {
-        username: username_,
-        email: email_,
-        password: password_,
-    } = &*form;
+        username,
+        email,
+        password,
+    } = form.into_inner();
 
-    match app
-        .register_user(
-            &username_,
-            &email_,
-            &password_,
-            UserPrivilege::Normal as u32,
-        )
-        .await
-    {
+    let user = NewUser {
+        username: &username.unwrap_or_else(|| email.clone()), // Better performance when using lazy calc!
+        email: &email,
+        hashed_password: &get_pwd_hash(app.env.password_salt, password.as_bytes()),
+        privilege: UserPrivilege::Normal as u32,
+    };
+
+    match app.register_user(&user).await {
         Ok(_) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: "".into(),
@@ -99,7 +101,7 @@ async fn user_register(form: web::Form<RegisterForm>, app: web::Data<AppState>) 
     post,
     context_path = "/api",
     path = "/accounts/login",
-    tag = "User",
+    tag = "Account",
     request_body(
         content = LoginForm,
         description = "Login form", 
@@ -118,23 +120,20 @@ async fn user_register(form: web::Form<RegisterForm>, app: web::Data<AppState>) 
 )]
 #[post("/accounts/login")]
 async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> impl Responder {
-    let LoginForm {
-        account: account_,
-        password: password_,
-    } = form.0;
+    let LoginForm { account, password } = form.into_inner();
 
     // ! NOTE: We MUST perform this hash comparison using a special function provided in the library, otherwise
     // ! it can be vulnerable to time-based attacks.
 
-    match app.get_user_by_username_or_email(&account_).await {
+    match app.get_user_by_username_or_email(&account).await {
         Ok(user) => {
             debug!(
                 "{:?}, provided={:?}--{:?}",
                 user,
-                account_.as_bytes(),
-                password_.as_bytes()
+                account.as_bytes(),
+                password.as_bytes()
             );
-            if verify(&user.password, password_.as_bytes()) {
+            if verify(&user.password, password.as_bytes()) {
                 let jwt_cookie = app.get_jwt_cookie(user.id);
                 if user.activated {
                     HttpResponse::Ok().cookie(jwt_cookie).json(Response {
@@ -161,8 +160,8 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
 #[utoipa::path(
     get,
     context_path = "/api",
-    path = "/whoami",
-    tag = "User",
+    path = "/accounts/whoami",
+    tag = "Account",
     responses(
         (status = 200, description = "User struct", body = User),
         (status = 202, description = "Not logged in", body = Response),
@@ -173,7 +172,7 @@ async fn user_login(form: web::Form<LoginForm>, app: web::Data<AppState>) -> imp
         ("jwt_cookie" = [])
     )
 )]
-#[get("/whoami", wrap = "RequireAuth::no_auth()")]
+#[get("/accounts/whoami", wrap = "RequireAuth::no_auth()")]
 async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     match cur_user {
         Some(user) => HttpResponse::Ok().json(&*user),
@@ -190,6 +189,7 @@ async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     get,
     context_path = "/api",
     path = "/devices",
+    tag = "Device",
     responses(
         (status = 200, description = "Devices", body = Vec<Device>),
         (status = 403, description = "Permission denied", body = Response),
@@ -217,9 +217,68 @@ async fn owned_devices(cur_user: AuthenticatedUser, app: web::Data<AppState>) ->
 }
 
 #[utoipa::path(
+    post,
+    context_path = "/api",
+    path = "/devices",
+    tag = "Record",
+    responses(
+        (status = 200, description = "Added a new device", body = Response),
+        (status = 401, description = "Unauthorized", body = Response),
+        (status = 500, description = "Internal error, contact website admin", body = Response)
+    ),
+    security(
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
+    )
+)]
+#[put(
+    "/devices",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+async fn add_device(
+    cur_user: AuthenticatedUser,
+    app: web::Data<AppState>,
+    form: web::Form<DeviceForm>,
+) -> impl Responder {
+    if let Err(e) = form.0.validate() {
+        info!("Illegal input detected: {:?}", e);
+        return HttpError::new(e.to_string(), 400).error_response();
+    }
+
+    let DeviceForm {
+        name,
+        desc,
+        dtype,
+        latitude,
+        longitude,
+    } = form.into_inner();
+
+    let device = NewDevice {
+        uid: cur_user.id,
+        name: &name,
+        desc: desc.as_deref(),
+        dtype,
+        latitude,
+        longitude,
+    };
+
+    match app.add_device(&device).await {
+        Ok(_) => HttpResponse::Ok().json(Response {
+            status: "ok",
+            message: "".into(),
+        }),
+        Err(e) => {
+            error!("{:?}", e);
+            HttpError::new(ErrorMessage::ServerError, 500).error_response()
+        }
+    }
+}
+
+#[utoipa::path(
         get,
         context_path = "/api",
         path = "/devices/{did}",
+        tag = "Device",
         responses(
             (status = 200, description = "Device info", body = Device),
             (status = NOT_FOUND, description = "Device was not found")
@@ -261,6 +320,7 @@ async fn device_info(
     delete,
     context_path = "/api",
     path = "/devices/{did}",
+    tag = "Device",
     responses(
         (status = 200, description = "Delete success", body = Response),
         (status = 401, description = "Unauthorized", body = Response),
@@ -284,7 +344,18 @@ async fn del_device(
 ) -> impl Responder {
     let did = path.into_inner();
     match app
-        .update_device_status(did, false, Some(cur_user.id))
+        .update_device(
+            &UpdateDevice {
+                id: did,
+                name: None,
+                desc: None,
+                latitude: None,
+                longitude: None,
+                last_update: None,
+                activated: Some(false),
+            },
+            Some(cur_user.id),
+        )
         .await
     {
         Ok(1) => HttpResponse::Ok().json(Response {
@@ -316,8 +387,9 @@ async fn upd_device_info(
     get,
     context_path = "/api",
     path = "/devices/{did}/records",
+    tag = "Device",
     responses(
-        (status = 200, description = "Delete success", body = Vec<Record>),
+        (status = 200, description = "Records of the device", body = Vec<Record>),
         (status = 401, description = "Unauthorized", body = Response),
         (status = 404, description = "Device was not found or the device is not yours \
         and you do not have enough privilege to delete it", body = Response),
@@ -356,6 +428,7 @@ async fn device_records(
     post,
     context_path = "/api",
     path = "/devices/{did}/records",
+    tag = "Record",
     responses(
         (status = 200, description = "Insert record success", body = Response),
         (status = 401, description = "Unauthorized", body = Response),
@@ -375,7 +448,7 @@ async fn device_records(
 async fn insert_device_records(
     path: web::Path<u64>,
     app: web::Data<AppState>,
-    form: web::Form<RecordFormWeb>,
+    form: web::Form<RecordForm>,
     cur_user: AuthenticatedUser,
 ) -> impl Responder {
     let did = path.into_inner();
@@ -383,24 +456,19 @@ async fn insert_device_records(
     } else {
         return HttpError::not_found(ErrorMessage::DeviceNotFound).error_response();
     }
-    let actix_web::web::Form(RecordFormWeb {
-        payload: payload_,
-        latitude: latitude_,
-        longitude: longitude_,
+    let RecordForm {
+        payload,
         timestamp: timestamp_,
-    }) = form;
+    } = form.into_inner();
 
-    // If timestamp is not set, fill it with server time
-    let timestamp_ = timestamp_.unwrap_or(Utc::now().naive_utc());
-
-    let db_form = RecordFormDb {
-        payload: payload_,
-        latitude: latitude_,
-        longitude: longitude_,
-        timestamp: timestamp_,
-    };
-
-    match app.add_device_records(&db_form).await {
+    match app
+        .add_device_records(&NewRecord {
+            did,
+            payload,
+            timestamp: timestamp_,
+        })
+        .await
+    {
         Ok(1) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: "".into(),

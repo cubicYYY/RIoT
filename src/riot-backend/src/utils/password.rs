@@ -1,4 +1,5 @@
 use argon2::{self, Config as Argon2cfg, Variant, Version};
+use log::debug;
 
 /// RFC 9106 (OWASP) recommends using Argon2id
 pub fn get_pwd_hash(salt: &[u8], password: &[u8]) -> String {
@@ -15,6 +16,7 @@ pub fn get_pwd_hash(salt: &[u8], password: &[u8]) -> String {
     argon2::hash_encoded(password, salt, &config).unwrap()
 }
 pub fn verify(hash: &str, password: &[u8]) -> bool {
+    debug!("hash={}, pwd={:?}", hash, password);
     argon2::verify_encoded(hash, password).unwrap()
 }
 #[cfg(test)]

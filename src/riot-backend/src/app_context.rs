@@ -1,4 +1,7 @@
-use crate::models::{Device, Owns, Record, RecordFormDb, RecordFormWeb, Site, User};
+use crate::models::{
+    Device, NewDevice, NewRecord, NewUser, Owns, Record, RecordForm, Site, UpdateDevice,
+    UpdateUser, User,
+};
 use crate::schema::device::activated;
 use crate::utils::jwt::generate_token;
 use crate::utils::password::get_pwd_hash;
@@ -6,8 +9,9 @@ use crate::{config::Config, db::DBClient};
 use actix_web::cookie::{self, Cookie};
 use chrono::Utc;
 use diesel::dsl::exists;
-use diesel::mysql::Mysql;
+use diesel::mysql::{self, Mysql};
 use diesel::result::Error as DieselErr;
+use diesel::sql_types::{BigInt, Unsigned};
 use diesel::{
     debug_query, BoolExpressionMethods, ExpressionMethods, Insertable, QueryDsl, SelectableHelper,
     Table,
@@ -33,27 +37,19 @@ impl AppState {
             .http_only(true)
             .finish()
     }
-    pub async fn register_user(
-        &self,
-        username_: &str,
-        email_: &str,
-        password_: &str,
-        privilege_level: u32,
-    ) -> Result<usize, DieselErr> {
-        use crate::schema::user::{self, dsl::*};
+    // Register a user, return Ok(id) if successful
+    pub async fn register_user<'a>(&self, form: &NewUser<'a>) -> Result<u64, DieselErr> {
+        use crate::schema::user;
         // TODO: Corner case: email conflicts with another's username
-        // TODO: Refactor to pass params in form
         // Currently we avoid this situation by restrict the username format in the route handler
         let mut conn = self.db.pool.get().await.unwrap();
-        let query = diesel::insert_into(user::table).values((
-            username.eq(username_),
-            email.eq(email_),
-            password.eq(get_pwd_hash(self.env.password_salt, password_.as_bytes())),
-            privilege.eq(privilege_level),
-            since.eq(Utc::now().naive_utc()),
-        ));
+        let query = diesel::insert_into(user::table).values(form);
         debug!("{}", debug_query::<Mysql, _>(&query).to_string());
-        query.execute(&mut conn).await
+        query.execute(&mut conn).await?;
+        diesel::sql_function!(fn last_insert_id() -> Unsigned<BigInt>);
+        // ! To get the correct `id``, must be in a single connection
+        let id: u64 = diesel::select(last_insert_id()).first(&mut conn).await?;
+        Ok(id)
     }
     pub async fn get_user_by_username_or_email(&self, keyword: &str) -> Result<User, DieselErr> {
         use crate::schema::user::dsl::*;
@@ -81,14 +77,11 @@ impl AppState {
             .await
     }
     /// Ban/activate a user
-    pub async fn update_user_status(&self, id_: u64, activated_: bool) -> Result<usize, DieselErr> {
-        use crate::schema::user::dsl::*;
+    pub async fn update_user<'a>(&self, form: &UpdateUser<'a>) -> Result<usize, DieselErr> {
         let mut conn = self.db.pool.get().await.unwrap();
-        diesel::update(user)
-            .filter(id.eq(id_))
-            .set(activated.eq(activated_))
-            .execute(&mut conn)
-            .await
+        let query = diesel::update(form).set(form);
+        debug!("{}", debug_query::<Mysql, _>(&query).to_string());
+        query.execute(&mut conn).await
     }
     pub async fn get_device_by_id(&self, id_: u64) -> Result<Device, DieselErr> {
         use crate::schema::device::dsl::*;
@@ -108,23 +101,34 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    pub async fn update_device_status(
+    // Add a new device, return Ok(id) if successful
+    pub async fn add_device<'a>(&self, form: &NewDevice<'a>) -> Result<u64, DieselErr> {
+        use crate::schema::device;
+        let mut conn = self.db.pool.get().await.unwrap();
+        let query = diesel::insert_into(device::table).values(form);
+        debug!("{}", debug_query::<Mysql, _>(&query).to_string());
+        query.execute(&mut conn).await?;
+        diesel::sql_function!(fn last_insert_id() -> Unsigned<BigInt>);
+        // ! To get the correct `id``, must be in a single connection
+        let id: u64 = diesel::select(last_insert_id()).first(&mut conn).await?;
+        Ok(id)
+    }
+    pub async fn update_device<'a>(
         &self,
-        id_: u64,
-        activated_: bool,
+        form: &UpdateDevice<'a>,
         only_for: Option<u64>,
     ) -> Result<usize, DieselErr> {
         use crate::schema::device::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
-        let query = diesel::update(device).filter(id.eq(id_));
+        let query = diesel::update(form);
         if let Some(uid_) = only_for {
             query
                 .filter(uid.eq(uid_))
-                .set(activated.eq(activated_))
+                .set(form)
                 .execute(&mut conn)
                 .await
         } else {
-            query.set(activated.eq(activated_)).execute(&mut conn).await
+            query.set(form).execute(&mut conn).await
         }
     }
     pub async fn get_site_by_id(&self, id_: u64) -> Result<Site, DieselErr> {
@@ -143,7 +147,7 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    pub async fn update_site_status(
+    pub async fn update_site(
         &self,
         id_: u64,
         activated_: bool,
@@ -178,12 +182,93 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    pub async fn add_device_records(&self, form: &RecordFormDb) -> Result<usize, DieselErr> {
+    pub async fn add_device_records(&self, form: &NewRecord) -> Result<usize, DieselErr> {
         use crate::schema::record;
         let mut conn = self.db.pool.get().await.unwrap();
         diesel::insert_into(record::table)
             .values(form)
             .execute(&mut conn)
             .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use crate::{
+        app_context::AppState,
+        config::Config,
+        db::DBClient,
+        models::{NewDevice, NewUser, UpdateDevice, UpdateUser, UserPrivilege},
+        utils::password::get_pwd_hash,
+    };
+
+    #[tokio::test]
+    async fn full_db_raw() {
+        let config = Config::init();
+        let app: AppState = AppState {
+            env: config.clone(),
+            db: DBClient::new(&config.database_url).await,
+        };
+
+        let id = app
+            .register_user(&NewUser {
+                username: &format!("test{}", Uuid::new_v4()),
+                email: &format!("kisa{}ma@mail.com", Uuid::new_v4()),
+                hashed_password: &get_pwd_hash(&app.env.password_salt, "Aaa123,????".as_bytes()),
+                privilege: UserPrivilege::Normal as u32,
+            })
+            .await
+            .expect("Register failed");
+        let new_email = format!("Modified{}@email.com", Uuid::new_v4());
+        app.update_user(&UpdateUser {
+            id,
+            username: None,
+            email: Some(&new_email),
+            hashed_password: None,
+            privilege: None,
+            activated: Some(true),
+            api_key: None,
+        })
+        .await
+        .expect("Modify user failed");
+        let modified_user = app
+            .get_user_by_username_or_email(&new_email)
+            .await
+            .expect("Get user failed");
+        println!("{:?}", modified_user);
+        assert_eq!(modified_user.activated, true);
+        assert_eq!(modified_user.privilege, 4);
+
+        // Add a device
+        let dvc = NewDevice {
+            uid: modified_user.id,
+            name: "NewDeviceTest",
+            desc: Some("Balalala"),
+            dtype: 1,
+            latitude: None,
+            longitude: Some(12.3456),
+        };
+        let did = app
+            .add_device(&dvc)
+            .await
+            .expect("Create new device failed");
+        app.update_device(
+            &UpdateDevice {
+                id: did,
+                name: Some("Modified!"),
+                desc: Some(Some("Ok...")),
+                latitude: None,
+                longitude: None,
+                last_update: None,
+                activated: None,
+            },
+            Some(modified_user.id),
+        )
+        .await
+        .expect("Create new device failed");
+        let device = app.get_device_by_id(did).await.expect("Get device failed");
+        println!("{:?}", device);
     }
 }

@@ -8,6 +8,8 @@ diesel::table! {
         name -> Varchar,
         desc -> Nullable<Text>,
         dtype -> Unsigned<Integer>,
+        latitude -> Nullable<Double>,
+        longitude -> Nullable<Double>,
         since -> Datetime,
         last_update -> Datetime,
         activated -> Bool,
@@ -27,8 +29,6 @@ diesel::table! {
         did -> Unsigned<Bigint>,
         #[max_length = 1]
         payload -> Binary,
-        latitude -> Nullable<Double>,
-        longitude -> Nullable<Double>,
         timestamp -> Datetime,
     }
 }

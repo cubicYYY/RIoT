@@ -79,7 +79,7 @@ async fn main() -> std::io::Result<()> {
             device_records,
             insert_device_records,
         ),
-        components(schemas(User, Device, Site, Record, LoginForm, RegisterForm, RecordFormWeb, Response)),
+        components(schemas(User, Device, Site, Record, LoginForm, RegisterForm, RecordForm, Response)),
         modifiers(&SecurityJwt)
     )]
     struct ApiDoc;
