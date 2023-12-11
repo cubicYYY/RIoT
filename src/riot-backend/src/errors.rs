@@ -17,7 +17,8 @@ impl fmt::Display for ErrorResponse {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
+#[allow(unused)]
 pub enum ErrorMessage {
     EmptyPassword,
     ExceededMaxPasswordLength(usize),
@@ -35,7 +36,7 @@ pub enum ErrorMessage {
     UsernameExist,
     UserExist,
     UserNotActivated,
-    DeviceNotFound,
+    ObjectNotFound,
     TokenNotProvided,
     PermissionDenied,
 }
@@ -61,7 +62,7 @@ impl ErrorMessage {
             ErrorMessage::UsernameExist => "An User with this username already exists".into(),
             ErrorMessage::UserExist => "User with this email(or username) already exists".into(),
             ErrorMessage::UserNotActivated => {
-                "User is not activated (after registration) or is banned by the admin".into()
+                "User is not activated (after registration) or is banned".into()
             }
             ErrorMessage::EmptyPassword => "Password cannot be empty".into(),
             ErrorMessage::HashingError => "Error while hashing password".into(),
@@ -77,7 +78,7 @@ impl ErrorMessage {
             ErrorMessage::InvalidEmail => "Email format is invalid".into(),
             ErrorMessage::InvalidPassword => "Password format or length is invalid".into(),
             ErrorMessage::InvalidUsername => "Username format or length is invalid".into(),
-            ErrorMessage::DeviceNotFound => "Device not exists or not owned by you".into(),
+            ErrorMessage::ObjectNotFound => "Object not exists or not owned by you".into(),
             ErrorMessage::TokenNotProvided => "You are not logged in, please provide token".into(),
             ErrorMessage::PermissionDenied => {
                 "You are not allowed to perform this action (resources not owned, or higher privilege required)".into()
@@ -107,31 +108,10 @@ impl HttpError {
         }
     }
 
-    pub fn bad_request(message: impl Into<String>) -> Self {
-        HttpError {
-            message: message.into(),
-            status: 400,
-        }
-    }
-
     pub fn permission_denied(message: impl Into<String>) -> Self {
         HttpError {
             message: message.into(),
             status: 403,
-        }
-    }
-
-    pub fn unique_constraint_voilation(message: impl Into<String>) -> Self {
-        HttpError {
-            message: message.into(),
-            status: 409,
-        }
-    }
-
-    pub fn unauthorized(message: impl Into<String>) -> Self {
-        HttpError {
-            message: message.into(),
-            status: 401,
         }
     }
 
@@ -169,6 +149,10 @@ impl ResponseError for HttpError {
                 message: cloned.message.into(),
             }),
             403 => HttpResponse::Forbidden().json(Response {
+                status: "fail",
+                message: cloned.message.into(),
+            }),
+            404 => HttpResponse::NotFound().json(Response {
                 status: "fail",
                 message: cloned.message.into(),
             }),

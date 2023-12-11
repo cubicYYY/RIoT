@@ -1,10 +1,12 @@
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::error::{ErrorForbidden, ErrorInternalServerError, ErrorUnauthorized};
+use actix_web::error::{ErrorForbidden, ErrorUnauthorized};
 
 use actix_web::{http, web, FromRequest, HttpMessage};
 
 use futures_util::future::{ready, LocalBoxFuture, Ready};
 use futures_util::FutureExt;
+use log::error;
+use serde::Deserialize;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
@@ -85,6 +87,10 @@ pub struct AuthMiddleware<S> {
     service: Rc<S>,
     least_priv: Rc<u32>,
 }
+#[derive(Debug, Deserialize)]
+pub struct ApiKey {
+    pub api_key: String,
+}
 
 impl<S> Service<ServiceRequest> for AuthMiddleware<S>
 where
@@ -103,6 +109,38 @@ where
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
+        // Check api key first
+        let app_state = req.app_data::<web::Data<AppState>>().unwrap();
+        let apikey = req
+            .app_data::<web::Query<ApiKey>>()
+            .map(|key| key.api_key.clone());
+        let cloned_app_state = app_state.clone();
+        if let Some(key) = apikey {
+            let srv = Rc::clone(&self.service);
+            let least_priv = self.least_priv.clone();
+            return async move {
+                let result = cloned_app_state.get_user_by_api_key(key.as_str()).await;
+                let user = result.map_err(|_e| {
+                    ErrorUnauthorized(ErrorResponse {
+                        status: "fail".to_string(),
+                        message: ErrorMessage::UserNotActivated.to_string(),
+                    })
+                })?;
+                if &user.privilege >= &least_priv {
+                    req.extensions_mut().insert::<User>(user);
+                    let res = srv.call(req).await?;
+                    Ok(res)
+                } else {
+                    let json_error = ErrorResponse {
+                        status: "fail".to_string(),
+                        message: ErrorMessage::PermissionDenied.to_string(),
+                    };
+                    Err(ErrorForbidden(json_error))
+                }
+            }
+            .boxed_local();
+        }
+
         let token = req
             .cookie("token")
             .map(|c| c.value().to_string())
@@ -120,15 +158,14 @@ where
             return async move { srv.call(req).await }.boxed_local();
         }
 
-        let app_state = req.app_data::<web::Data<AppState>>().unwrap();
         let user_id = match parse_token(&token.unwrap(), app_state.env.jwt_secret) {
             Ok(id) => id,
             Err(e) => {
-                let json_error = ErrorResponse {
+                error!("{}", e);
+                return Box::pin(ready(Err(ErrorUnauthorized(ErrorResponse {
                     status: "fail".to_string(),
-                    message: e.message,
-                };
-                return Box::pin(ready(Err(ErrorUnauthorized(json_error))));
+                    message: ErrorMessage::InvalidToken.to_string(),
+                }))));
             }
         };
 

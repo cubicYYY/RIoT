@@ -1,21 +1,14 @@
 use crate::models::{
-    Device, NewDevice, NewRecord, NewUser, Owns, Record, RecordForm, Site, UpdateDevice,
+    Device, NewDevice, NewRecord, NewTag, NewUser, Record, Tag, UpdateDevice, UpdateTag,
     UpdateUser, User,
 };
-use crate::schema::device::activated;
 use crate::utils::jwt::generate_token;
-use crate::utils::password::get_pwd_hash;
 use crate::{config::Config, db::DBClient};
 use actix_web::cookie::{self, Cookie};
-use chrono::Utc;
 use diesel::dsl::exists;
-use diesel::mysql::{self, Mysql};
+use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
-use diesel::sql_types::{BigInt, Unsigned};
-use diesel::{
-    debug_query, BoolExpressionMethods, ExpressionMethods, Insertable, QueryDsl, SelectableHelper,
-    Table,
-};
+use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
 use log::debug;
 
@@ -76,7 +69,6 @@ impl AppState {
             .first(&mut conn)
             .await
     }
-    /// Ban/activate a user
     pub async fn update_user<'a>(&self, form: &UpdateUser<'a>) -> Result<usize, DieselErr> {
         let mut conn = self.db.pool.get().await.unwrap();
         let query = diesel::update(form).set(form);
@@ -92,6 +84,16 @@ impl AppState {
             .first(&mut conn)
             .await
     }
+    // Plural form of `get_device_by_id`
+    pub async fn get_device_by_ids(&self, ids: &[u64]) -> Result<Vec<Device>, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        device
+            .select(Device::as_select())
+            .filter(id.eq_any(ids))
+            .get_results(&mut conn)
+            .await
+    }
     pub async fn get_owned_devices(&self, uid_: u64) -> Result<Vec<Device>, DieselErr> {
         use crate::schema::device::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
@@ -101,7 +103,7 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    // Add a new device, return Ok(id) if successful
+    /// Add a new device, return Ok(id) if successful
     pub async fn add_device<'a>(&self, form: &NewDevice<'a>) -> Result<u64, DieselErr> {
         use crate::schema::device;
         let mut conn = self.db.pool.get().await.unwrap();
@@ -131,39 +133,50 @@ impl AppState {
             query.set(form).execute(&mut conn).await
         }
     }
-    pub async fn get_site_by_id(&self, id_: u64) -> Result<Site, DieselErr> {
-        use crate::schema::site::dsl::*;
+    // Add a new tag, return Ok(id) if successful
+    pub async fn add_tag<'a>(&self, form: &NewTag<'a>) -> Result<u64, DieselErr> {
+        use crate::schema::tag;
         let mut conn = self.db.pool.get().await.unwrap();
-        site.select(Site::as_select())
+        let query = diesel::insert_into(tag::table).values(form);
+        debug!("{}", debug_query::<Mysql, _>(&query).to_string());
+        query.execute(&mut conn).await?;
+        diesel::sql_function!(fn last_insert_id() -> Unsigned<BigInt>);
+        // ! To get the correct `id``, must be in a single connection
+        let id: u64 = diesel::select(last_insert_id()).first(&mut conn).await?;
+        Ok(id)
+    }
+    pub async fn get_tag_by_id(&self, id_: u64) -> Result<Tag, DieselErr> {
+        use crate::schema::tag::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        tag.select(Tag::as_select())
             .filter(id.eq(id_))
             .first(&mut conn)
             .await
     }
-    pub async fn get_owned_sites(&self, uid_: u64) -> Result<Vec<Site>, DieselErr> {
-        use crate::schema::site::dsl::*;
+    pub async fn get_owned_tags(&self, uid_: u64) -> Result<Vec<Tag>, DieselErr> {
+        use crate::schema::tag::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
-        site.select(Site::as_select())
+        tag.select(Tag::as_select())
             .filter(uid.eq(uid_))
             .get_results(&mut conn)
             .await
     }
-    pub async fn update_site(
+    pub async fn update_tag<'a>(
         &self,
-        id_: u64,
-        activated_: bool,
+        form: &UpdateTag<'a>,
         only_for: Option<u64>,
     ) -> Result<usize, DieselErr> {
-        use crate::schema::site::dsl::*;
+        use crate::schema::tag::dsl::*;
         let mut conn = self.db.pool.get().await.unwrap();
-        let query = diesel::update(site).filter(id.eq(id_));
+        let query = diesel::update(form);
         if let Some(uid_) = only_for {
             query
                 .filter(uid.eq(uid_))
-                .set(activated.eq(activated_))
+                .set(form)
                 .execute(&mut conn)
                 .await
         } else {
-            query.set(activated.eq(activated_)).execute(&mut conn).await
+            query.set(form).execute(&mut conn).await
         }
     }
     pub async fn device_belongs_to(&self, did_: u64, uid_: u64) -> Result<bool, DieselErr> {
@@ -182,7 +195,7 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    pub async fn add_device_records(&self, form: &NewRecord) -> Result<usize, DieselErr> {
+    pub async fn add_device_records<'a>(&self, form: &NewRecord<'a>) -> Result<usize, DieselErr> {
         use crate::schema::record;
         let mut conn = self.db.pool.get().await.unwrap();
         diesel::insert_into(record::table)
@@ -190,10 +203,43 @@ impl AppState {
             .execute(&mut conn)
             .await
     }
+    pub async fn tag_belongs_to(&self, tid_: u64, uid_: u64) -> Result<bool, DieselErr> {
+        use crate::schema::tag::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::select(exists(tag.filter(id.eq(tid_).and(uid.eq(uid_)))))
+            .get_result(&mut conn)
+            .await
+    }
+    /// get device IDs
+    pub async fn get_dids_under_tag(&self, tid_: u64) -> Result<Vec<u64>, DieselErr> {
+        use crate::schema::owns::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        owns.select(did)
+            .filter(tid.eq(tid_))
+            .get_results(&mut conn)
+            .await
+    }
+    pub async fn tag_device(&self, tid_: u64, did_: u64) -> Result<usize, DieselErr> {
+        use crate::schema::owns::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::insert_into(owns)
+            .values((tid.eq(tid_), did.eq(did_)))
+            .execute(&mut conn)
+            .await
+    }
+    pub async fn untag_device(&self, tid_: u64, did_: u64) -> Result<usize, DieselErr> {
+        use crate::schema::owns::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        diesel::delete(owns)
+            .filter(tid.eq(tid_).and(did.eq(did_)))
+            .execute(&mut conn)
+            .await
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use diesel_async::RunQueryDsl;
     use uuid::Uuid;
 
     use crate::{
@@ -259,6 +305,7 @@ mod tests {
                 id: did,
                 name: Some("Modified!"),
                 desc: Some(Some("Ok...")),
+                dtype: None,
                 latitude: None,
                 longitude: None,
                 last_update: None,
@@ -270,5 +317,47 @@ mod tests {
         .expect("Create new device failed");
         let device = app.get_device_by_id(did).await.expect("Get device failed");
         println!("{:?}", device);
+        assert_eq!(device.name, "Modified!");
+        assert_eq!(device.desc, Some("Ok...".into()));
+
+        // tags
+    }
+    #[tokio::test]
+    async fn racing() {
+        let config = Config::init();
+        let app: AppState = AppState {
+            env: config.clone(),
+            db: DBClient::new(&config.database_url).await,
+        };
+        let mut conn = app.db.pool.get().await.unwrap();
+
+        let new_user = async move {
+            for i in 0..10 {
+                println!("reg");
+                app.register_user(&NewUser {
+                    username: &format!("racing{}{}", i, Uuid::new_v4()),
+                    email: &format!("kisa{}ma@mail.com", Uuid::new_v4()),
+                    hashed_password: &get_pwd_hash(
+                        &app.env.password_salt,
+                        "Aaa123,????".as_bytes(),
+                    ),
+                    privilege: UserPrivilege::Normal as u32,
+                })
+                .await
+                .expect("Register failed");
+            }
+        };
+        let modify_user = async move {
+            for _ in 0..10 {
+                diesel::sql_function!(fn last_insert_id() -> Unsigned<BigInt>);
+                let id: u64 = diesel::select(last_insert_id())
+                    .first(&mut conn)
+                    .await
+                    .unwrap();
+                println!("upd lii={}", id);
+                assert_eq!(id, 0);
+            }
+        };
+        tokio::join!(new_user, modify_user);
     }
 }

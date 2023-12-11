@@ -72,14 +72,28 @@ async fn main() -> std::io::Result<()> {
             user_login,
             whoami,
             healthchecker,
+            //devices
             owned_devices,
             device_info,
+            upd_device_info,
             del_device,
-            // upd_device_info,
+            //tags
+            //records
             device_records,
             insert_device_records,
         ),
-        components(schemas(User, Device, Site, Record, LoginForm, RegisterForm, RecordForm, Response)),
+        components(schemas(
+            User,
+            Device,
+            Tag,
+            Record,
+            LoginForm,
+            RegisterForm,
+            NewDeviceForm,
+            RecordForm,
+            UpdateDeviceForm,
+            Response
+        )),
         modifiers(&SecurityJwt)
     )]
     struct ApiDoc;
@@ -141,7 +155,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api")
-                    // RIoT site
+                    // RIoT tag
                     .service(healthchecker)
                     //users
                     .service(user_register)
@@ -155,19 +169,16 @@ async fn main() -> std::io::Result<()> {
                     .service(device_records)
                     .service(insert_device_records)
                     .service(del_device)
-                    // sites
-                    .service(owned_sites)
-                    .service(site_info)
-                    .service(upd_site_info)
-                    .service(site_devices)
-                    .service(upd_site_devices)
-                    .service(del_site)
-                    // pipes
-                    .service(ws_socket)
-                    .service(mqtt_sub)
-                    .service(mqtt_unsub),
-                // Admin only:
-                // TODO...
+                    // tags
+                    .service(owned_tags)
+                    .service(tag_info)
+                    .service(upd_tag_info)
+                    .service(tagged_devices)
+                    .service(tag_device)
+                    .service(del_tag), // pipes
+                                       // TODO...
+                                       // Admin only:
+                                       // TODO...
             )
             .service(Files::new("/", "./public").index_file("index.html"))
             .default_service(web::route().to(notfound_404))

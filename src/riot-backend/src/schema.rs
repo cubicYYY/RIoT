@@ -17,8 +17,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    owns (sid, did) {
-        sid -> Unsigned<Bigint>,
+    owns (tid, did) {
+        tid -> Unsigned<Bigint>,
         did -> Unsigned<Bigint>,
     }
 }
@@ -34,7 +34,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    site (id) {
+    tag (id) {
         id -> Unsigned<Bigint>,
         uid -> Unsigned<Bigint>,
         #[max_length = 255]
@@ -63,8 +63,8 @@ diesel::table! {
 
 diesel::joinable!(device -> user (uid));
 diesel::joinable!(owns -> device (did));
-diesel::joinable!(owns -> site (sid));
+diesel::joinable!(owns -> tag (tid));
 diesel::joinable!(record -> device (did));
-diesel::joinable!(site -> user (uid));
+diesel::joinable!(tag -> user (uid));
 
-diesel::allow_tables_to_appear_in_same_query!(device, owns, record, site, user,);
+diesel::allow_tables_to_appear_in_same_query!(device, owns, record, tag, user,);
