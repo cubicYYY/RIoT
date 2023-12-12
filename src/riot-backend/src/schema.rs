@@ -27,8 +27,7 @@ diesel::table! {
     record (id) {
         id -> Unsigned<Bigint>,
         did -> Unsigned<Bigint>,
-        #[max_length = 1]
-        payload -> Binary,
+        payload -> Blob,
         timestamp -> Datetime,
     }
 }

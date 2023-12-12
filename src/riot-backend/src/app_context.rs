@@ -5,11 +5,12 @@ use crate::models::{
 use crate::utils::jwt::generate_token;
 use crate::{config::Config, db::DBClient};
 use actix_web::cookie::{self, Cookie};
+use chrono::Utc;
 use diesel::dsl::exists;
 use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
 use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use log::debug;
 
 #[derive(Clone)]
@@ -30,7 +31,7 @@ impl AppState {
             .http_only(true)
             .finish()
     }
-    // Register a user, return Ok(id) if successful
+    /// Register a user, return Ok(id) if successful
     pub async fn register_user<'a>(&self, form: &NewUser<'a>) -> Result<u64, DieselErr> {
         use crate::schema::user;
         // TODO: Corner case: email conflicts with another's username
@@ -161,6 +162,7 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
+    /// return: rows affected
     pub async fn update_tag<'a>(
         &self,
         form: &UpdateTag<'a>,
@@ -195,13 +197,26 @@ impl AppState {
             .get_results(&mut conn)
             .await
     }
-    pub async fn add_device_records<'a>(&self, form: &NewRecord<'a>) -> Result<usize, DieselErr> {
-        use crate::schema::record;
+    pub async fn add_device_records<'a>(&self, form: &NewRecord<'a>) -> Result<(), DieselErr> {
+        use crate::schema::{device, record};
+        use diesel_async::scoped_futures::ScopedFutureExt;
         let mut conn = self.db.pool.get().await.unwrap();
-        diesel::insert_into(record::table)
-            .values(form)
-            .execute(&mut conn)
-            .await
+        conn.transaction(|conn| {
+            async move {
+                diesel::insert_into(record::table)
+                    .values(form)
+                    .execute(conn)
+                    .await?;
+                // Update last update
+                diesel::update(device::table.filter(device::id.eq(form.did)))
+                    .set(device::last_update.eq(form.timestamp.unwrap_or(&Utc::now().naive_utc())))
+                    .execute(conn)
+                    .await?;
+                diesel::result::QueryResult::Ok(())
+            }
+            .scope_boxed()
+        })
+        .await
     }
     pub async fn tag_belongs_to(&self, tid_: u64, uid_: u64) -> Result<bool, DieselErr> {
         use crate::schema::tag::dsl::*;
@@ -239,6 +254,7 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDateTime;
     use diesel_async::RunQueryDsl;
     use uuid::Uuid;
 
@@ -246,7 +262,10 @@ mod tests {
         app_context::AppState,
         config::Config,
         db::DBClient,
-        models::{NewDevice, NewUser, UpdateDevice, UpdateUser, UserPrivilege},
+        models::{
+            NewDevice, NewRecord, NewTag, NewUser, UpdateDevice, UpdateTag, UpdateUser,
+            UserPrivilege,
+        },
         utils::password::get_pwd_hash,
     };
 
@@ -258,7 +277,7 @@ mod tests {
             db: DBClient::new(&config.database_url).await,
         };
 
-        let id = app
+        let uid = app
             .register_user(&NewUser {
                 username: &format!("test{}", Uuid::new_v4()),
                 email: &format!("kisa{}ma@mail.com", Uuid::new_v4()),
@@ -269,7 +288,7 @@ mod tests {
             .expect("Register failed");
         let new_email = format!("Modified{}@email.com", Uuid::new_v4());
         app.update_user(&UpdateUser {
-            id,
+            id: uid,
             username: None,
             email: Some(&new_email),
             hashed_password: None,
@@ -315,12 +334,62 @@ mod tests {
         )
         .await
         .expect("Create new device failed");
-        let device = app.get_device_by_id(did).await.expect("Get device failed");
-        println!("{:?}", device);
-        assert_eq!(device.name, "Modified!");
-        assert_eq!(device.desc, Some("Ok...".into()));
+        let modified_device = app.get_device_by_id(did).await.expect("Get device failed");
+        println!("{:?}", modified_device);
+        assert_eq!(modified_device.name, "Modified!");
+        assert_eq!(modified_device.desc, Some("Ok...".into()));
+        // records
+        app.add_device_records(&NewRecord {
+            did,
+            payload: &[1, 2, 3],
+            timestamp: NaiveDateTime::from_timestamp_millis(1662921288000).as_ref(),
+        })
+        .await
+        .expect("Add record failed!");
+        let records = app
+            .get_device_records(did)
+            .await
+            .expect("Get records failed");
+        println!("{:?}", records);
+        assert!(!records.is_empty());
 
         // tags
+        let tid = app
+            .add_tag(&NewTag {
+                uid,
+                name: &format!("tag_{}", Uuid::new_v4()),
+                desc: None,
+                activated: true,
+            })
+            .await
+            .expect("Create new tag failed");
+
+        app.update_tag(
+            &UpdateTag {
+                id: tid,
+                name: None,
+                desc: Some(Some("Modified!!!")),
+                activated: None,
+            },
+            Some(uid),
+        )
+        .await
+        .expect("Update tag error!");
+
+        let modified_tag = app.get_tag_by_id(tid).await.expect("Get tag failed");
+        assert_eq!(modified_tag.desc, Some("Modified!!!".to_string()));
+        println!("{:?}", modified_tag);
+
+        // tag device
+        app.tag_device(modified_tag.id, modified_device.id)
+            .await
+            .expect("Tagging failed!");
+        let res = app
+            .get_dids_under_tag(modified_tag.id)
+            .await
+            .expect("Get dids under the tag failed");
+        println!("{:?}", res);
+        assert!(!res.is_empty());
     }
     #[tokio::test]
     async fn racing() {

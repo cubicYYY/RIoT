@@ -393,14 +393,10 @@ pub(crate) async fn insert_device_records(
         })
         .await
     {
-        Ok(1) => HttpResponse::Ok().json(Response {
+        Ok(_) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: "".into(),
         }),
-        Ok(_) => {
-            error!("This should never happened!");
-            HttpError::server_error(ErrorMessage::ServerError).error_response()
-        }
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()
