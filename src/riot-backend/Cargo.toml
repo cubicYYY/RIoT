@@ -57,4 +57,3 @@ inherits = "release"
 strip = false
 codegen-units = 16
 debug = true
-jemalloc = false

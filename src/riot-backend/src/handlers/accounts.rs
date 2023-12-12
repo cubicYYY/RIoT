@@ -130,7 +130,7 @@ pub(crate) async fn user_register(
         }),
         Err(DieselErr::DatabaseError(DatabaseErrorKind::UniqueViolation, _msg)) => {
             HttpError::new(ErrorMessage::UserExist, 409).error_response()
-        }
+        },
         Err(e) => {
             error!("{:?}", e);
             HttpError::new(ErrorMessage::ServerError, 500).error_response()
@@ -149,7 +149,7 @@ pub(crate) async fn user_register(
             example = json!({"username": "yyysama", "password": "pass.!w0rd"})
         ),
         responses(
-            (status = 200, description = "Success and return user id in message, set the token Cookie", body = Response),
+            (status = 200, description = "Success and return user token in message, set the token Cookie", body = Response),
             (status = 403, description = "Failed: wrong credentials or suspended/non-valid account ", body = Response),
             (status = 500, description = "Internal error, contact webtag admin", body = Response)
         ),
@@ -180,9 +180,9 @@ pub(crate) async fn user_login(
             if verify(&user.password, password.as_bytes()) {
                 let jwt_cookie = app.get_jwt_cookie(user.id);
                 if user.activated {
-                    HttpResponse::Ok().cookie(jwt_cookie).json(Response {
+                    HttpResponse::Ok().cookie(jwt_cookie.clone()).json(Response {
                         status: "ok",
-                        message: user.id.to_string(),
+                        message: jwt_cookie.value().to_string(),
                     })
                 } else {
                     HttpError::permission_denied(ErrorMessage::UserNotActivated).error_response()
@@ -204,7 +204,7 @@ pub(crate) async fn user_login(
 #[utoipa::path(
         get,
         context_path = "/api",
-        path = "/accounts/whoami",
+        path = "/accounts/me",
         tag = "Account",
         responses(
             (status = 200, description = "User struct", body = User),
@@ -216,8 +216,8 @@ pub(crate) async fn user_login(
             ("jwt_cookie" = [])
         )
     )]
-#[get("/accounts/whoami", wrap = "RequireAuth::no_auth()")]
-pub(crate) async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responder {
+#[get("/accounts/me", wrap = "RequireAuth::no_auth()")]
+pub(crate) async fn me(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     match cur_user {
         Some(user) => {
             let mut user = (*user).clone();
@@ -235,10 +235,21 @@ pub(crate) async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responde
 #[utoipa::path(
     put,
     context_path = "/api",
-    path = "/accounts/myinfo",
+    path = "/accounts/me",
     tag = "Account",
+    request_body(
+        content = UpdateUserForm,
+        description = "Update user", 
+        example = json!(
+            {
+                "username": "new_name",
+                "email": "new_email@example.com",
+                "password": "raw!pass.word!",
+            })
+    ),
     responses(
         (status = 200, description = "Ok", body = Response),
+        (status = 304, description = "No change to be done", body = Response),
         (status = 401, description = "Not logged in", body = Response),
         (status = 500, description = "Server internal error", body = Response),
     ),
@@ -248,7 +259,7 @@ pub(crate) async fn whoami(cur_user: Option<AuthenticatedUser>) -> impl Responde
     )
 )]
 #[put(
-    "/accounts/myinfo",
+    "/accounts/me",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
 pub(crate) async fn update_user(
@@ -279,6 +290,9 @@ pub(crate) async fn update_user(
             status: "ok",
             message: "".into(),
         }),
+        Err(diesel::result::Error::QueryBuilderError(_)) => {
+            HttpError::not_modified(ErrorMessage::NoChange).error_response()
+        },
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()

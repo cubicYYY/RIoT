@@ -7,7 +7,7 @@ use actix_web::{
     web::{self},
     HttpResponse, Responder, ResponseError,
 };
-use chrono::{naive::serde::ts_microseconds_option, NaiveDateTime};
+use chrono::{naive::serde::ts_milliseconds_option, NaiveDateTime};
 use diesel::result::Error as DieselErr;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ pub struct NewDeviceForm {
 pub struct RecordForm {
     pub payload: Vec<u8>,
     /// Precision: milliseconds
-    #[serde(with = "ts_microseconds_option")]
+    #[serde(with = "ts_milliseconds_option")]
     pub timestamp: Option<NaiveDateTime>,
 }
 
@@ -89,10 +89,21 @@ pub(crate) async fn owned_devices(
         post,
         context_path = "/api",
         path = "/devices",
-        tag = "Record",
-        request_body(content=NewDeviceForm),
+        tag = "Device",
+        request_body(
+            content = NewDeviceForm,
+            description = "Form for a new device", 
+            example = json!(
+                {
+                    "name":"test_device",
+                    "desc":"(optional)McDonald",
+                    "dtype":1,
+                    "latitude":114.514,
+                    "longitude":19.19810
+                })
+        ),
         responses(
-            (status = 200, description = "Added a new device", body = Response),
+            (status = 200, description = "Added a new device, message=device id", body = Response),
             (status = 401, description = "Unauthorized", body = Response),
             (status = 500, description = "Internal error, contact webtag admin", body = Response)
         ),
@@ -133,9 +144,9 @@ pub(crate) async fn add_device(
     };
 
     match app.add_device(&device).await {
-        Ok(_) => HttpResponse::Ok().json(Response {
+        Ok(id) => HttpResponse::Ok().json(Response {
             status: "ok",
-            message: "".into(),
+            message: id.to_string(),
         }),
         Err(e) => {
             error!("{:?}", e);
@@ -246,7 +257,18 @@ pub(crate) async fn del_device(
         context_path = "/api",
         path = "/devices/{did}",
         tag = "Device",
-        request_body(content=UpdateDeviceForm),
+        request_body(
+            content = UpdateDeviceForm,
+            description = "Form for a new device", 
+            example = json!(
+                {
+                    "name":"new_name",
+                    "desc":"Balala",
+                    "dtype":"1",
+                    "latitude":"114.514",
+                    "longitude":"19.19810"
+                })
+        ),
         responses(
             (status = 200, description = "Update successed", body = Response),
             (status = 401, description = "Unauthorized", body = Response),
@@ -352,7 +374,11 @@ pub(crate) async fn device_records(
         context_path = "/api",
         path = "/devices/{did}/records",
         tag = "Record",
-        request_body(content=RecordForm),
+        request_body(
+            content=RecordForm,
+            description="Record submit. Mainly for tests. Timestamp is of millisecond precision",
+            example = json!({"payload":[1,1,4,5,1,4], "timestamp":1145141919})
+        ),
         responses(
             (status = 200, description = "Insert record success", body = Response),
             (status = 401, description = "Unauthorized", body = Response),

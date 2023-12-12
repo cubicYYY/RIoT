@@ -30,11 +30,13 @@ pub enum ErrorMessage {
     InvalidUsername,
     InvalidPassword,
     InvalidEmail,
+    NoChange,
     ServerError,
     WrongCredentials,
     EmailExist,
     UsernameExist,
     UserExist,
+    TagExist,
     UserNotActivated,
     ObjectNotFound,
     TokenNotProvided,
@@ -61,6 +63,8 @@ impl ErrorMessage {
             ErrorMessage::EmailExist => "An User with this email already exists".into(),
             ErrorMessage::UsernameExist => "An User with this username already exists".into(),
             ErrorMessage::UserExist => "User with this email(or username) already exists".into(),
+            ErrorMessage::TagExist => "This device has been tagged by this tag".into(),
+            ErrorMessage::NoChange => "No change to be done".into(),
             ErrorMessage::UserNotActivated => {
                 "User is not activated (after registration) or is banned".into()
             }
@@ -112,6 +116,13 @@ impl HttpError {
         HttpError {
             message: message.into(),
             status: 403,
+        }
+    }
+
+    pub fn not_modified(message: impl Into<String>) -> Self {
+        HttpError {
+            message: message.into(),
+            status: 304,
         }
     }
 

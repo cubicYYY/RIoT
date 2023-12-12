@@ -68,30 +68,44 @@ async fn main() -> std::io::Result<()> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            healthchecker,
+            //accounts
             user_register,
             user_login,
-            whoami,
-            healthchecker,
+            me,
+            update_user,
             //devices
+            add_device,
             owned_devices,
             device_info,
             upd_device_info,
-            del_device,
-            //tags
-            //records
             device_records,
             insert_device_records,
+            del_device,
+            //tags
+            owned_tags,
+            add_tag,
+            tag_info,
+            del_tag,
+            upd_tag_info,
+            tagged_devices,
+            tag_device,
+            untag_device,
         ),
         components(schemas(
             User,
             Device,
             Tag,
             Record,
-            LoginForm,
             RegisterForm,
+            LoginForm,
+            UpdateUserForm,
             NewDeviceForm,
             RecordForm,
             UpdateDeviceForm,
+            UpdateTagForm,
+            TagDeviceForm,
+            NewTagForm,
             Response
         )),
         modifiers(&SecurityJwt)
@@ -160,9 +174,11 @@ async fn main() -> std::io::Result<()> {
                     //users
                     .service(user_register)
                     .service(user_login)
-                    .service(whoami)
+                    .service(me)
+                    .service(update_user)
                     // Logged-in users only:
                     // devices
+                    .service(add_device)
                     .service(owned_devices)
                     .service(device_info)
                     .service(upd_device_info)
@@ -170,6 +186,7 @@ async fn main() -> std::io::Result<()> {
                     .service(insert_device_records)
                     .service(del_device)
                     // tags
+                    .service(add_tag)
                     .service(owned_tags)
                     .service(tag_info)
                     .service(upd_tag_info)

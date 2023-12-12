@@ -10,7 +10,7 @@ use actix_web::{
     web::{self},
     HttpResponse, Responder, ResponseError,
 };
-use diesel::result::Error as DieselErr;
+use diesel::result::{Error as DieselErr, DatabaseErrorKind};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -76,7 +76,7 @@ pub(crate) async fn owned_tags(
     tag = "Tag",
     request_body(content=NewTagForm),
         responses(
-        (status = 200, description = "Added a new tag", body = Response),
+        (status = 200, description = "Added a new tag, message = tid", body = Response),
         (status = 401, description = "Unauthorized", body = Response),
         (status = 500, description = "Internal error, contact web admin", body = Response)
     ),
@@ -86,7 +86,7 @@ pub(crate) async fn owned_tags(
     )
 )]
 #[post(
-    "/devices",
+    "/tags",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
 pub(crate) async fn add_tag(
@@ -109,9 +109,9 @@ pub(crate) async fn add_tag(
     };
 
     match app.add_tag(&tag).await {
-        Ok(_) => HttpResponse::Ok().json(Response {
+        Ok(id) => HttpResponse::Ok().json(Response {
             status: "ok",
-            message: "".into(),
+            message: id.to_string(),
         }),
         Err(e) => {
             error!("{:?}", e);
@@ -320,11 +320,11 @@ pub(crate) async fn tagged_devices(
 #[utoipa::path(
     post,
     context_path = "/api",
-    path = "/tags",
+    path = "/tags/{tid}/devices",
     tag = "Tag",
     request_body(content=TagDeviceForm),
     responses(
-        (status = 200, description = "Tag a device", body = Response),
+        (status = 200, description = "Tagged", body = Response),
         (status = 401, description = "Unauthorized", body = Response),
         (status = 404, description = "Device/tag was not found or the device/tag is not yours \
         and you do not have enough privilege to delete it", body = Response),
@@ -361,6 +361,9 @@ pub(crate) async fn tag_device(
             status: "ok",
             message: "".into(),
         }),
+        Err(DieselErr::DatabaseError(DatabaseErrorKind::UniqueViolation, _msg)) => {
+            HttpError::new(ErrorMessage::TagExist, 409).error_response()
+        },
         Err(e) => {
             error!("{:?}", e);
             HttpError::new(ErrorMessage::ServerError, 500).error_response()
