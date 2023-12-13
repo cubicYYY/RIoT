@@ -346,7 +346,12 @@ pub(crate) async fn send_verification_email(
             let verify_link =
                 app.env.host.to_string() + &format!("/api/accounts/verify?code={code}");
             debug!("OTC link = {verify_link}");
-            // TODO: send email
+            if let Err(e) = app
+                .send_verify_mail(&user.email, format!("Your link: {verify_link}"))
+                .await
+            {
+                error!("{}", e);
+            }
             HttpResponse::Ok().json(Response {
                 status: "ok",
                 message: "If the user exists, the verification email has been sent.".into(),

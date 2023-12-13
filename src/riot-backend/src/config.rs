@@ -7,6 +7,12 @@ lazy_static! {
     static ref JWT_MAXAGE: String = std::env::var("JWT_MAXAGE").unwrap_or("86400".into());
     static ref PASSWORD_SALT: String = std::env::var("PWDSALT").unwrap_or("r1oTs4lt".into());
     static ref HOST: String = std::env::var("RIOT_HOST").unwrap_or("127.0.0.1:8888".into());
+    static ref EMAIL: String = std::env::var("RIOT_EMAIL").unwrap_or("your_riot@email.com".into());
+    static ref SMTP_HOST: String =
+        std::env::var("RIOT_SMTP_HOST").unwrap_or("smtp.email.com".into());
+    static ref SMTP_NAME: String = std::env::var("RIOT_SMTP_NAME").unwrap_or("rust_iot".into());
+    static ref SMTP_PWD: String =
+        std::env::var("RIOT_SMTP_PWD").unwrap_or("AAAAAAAAAAAAAAAA".into());
 }
 
 #[derive(Debug, Clone)]
@@ -16,6 +22,10 @@ pub struct Config {
     pub jwt_maxage: i64,
     pub password_salt: &'static [u8],
     pub host: &'static str,
+    pub email: &'static str,
+    pub smtp_host: &'static str,
+    pub smtp_name: &'static str,
+    pub smtp_pwd: &'static str,
 }
 
 impl Config {
@@ -27,6 +37,10 @@ impl Config {
             jwt_maxage: JWT_MAXAGE.parse::<i64>().unwrap(),
             password_salt: &PASSWORD_SALT.as_bytes(),
             host: &HOST,
+            email: &EMAIL,
+            smtp_host: &SMTP_HOST,
+            smtp_name: &SMTP_NAME,
+            smtp_pwd: &SMTP_PWD,
         }
     }
 }

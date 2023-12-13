@@ -2,6 +2,7 @@ use crate::models::{
     Device, NewDevice, NewRecord, NewTag, NewUser, Record, Tag, UpdateDevice, UpdateTag,
     UpdateUser, User,
 };
+use crate::utils::email::send_email_smtp;
 use crate::utils::jwt::generate_token;
 use crate::{config::Config, db::DBClient};
 use actix_web::cookie::{self, Cookie};
@@ -10,6 +11,8 @@ use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
 use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::{AsyncSmtpTransport, Tokio1Executor};
 use log::debug;
 use moka::future::Cache;
 
@@ -264,6 +267,29 @@ impl AppState {
             .filter(tid.eq(tid_).and(did.eq(did_)))
             .execute(&mut conn)
             .await
+    }
+    pub async fn send_verify_mail(
+        &self,
+        user_email: &str,
+        body: String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let smtp_credentials = Credentials::new(
+            self.env.smtp_name.to_string(),
+            self.env.smtp_pwd.to_string(),
+        );
+
+        let mailer: AsyncSmtpTransport<Tokio1Executor> =
+            AsyncSmtpTransport::<Tokio1Executor>::relay(self.env.smtp_host)?
+                .credentials(smtp_credentials)
+                .build();
+        send_email_smtp(
+            &mailer,
+            &format!("<{}>", self.env.email),
+            &format!("<{}>", user_email),
+            "RIoT Verification",
+            body,
+        )
+        .await
     }
 }
 
