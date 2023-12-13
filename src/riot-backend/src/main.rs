@@ -9,6 +9,7 @@ mod mqtt_instance;
 mod schema;
 mod utils;
 
+use chrono::Utc;
 use config::Config;
 use db::*;
 
@@ -17,9 +18,10 @@ use diesel_async::AsyncMysqlConnection;
 use handlers::*;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::info;
+use log::{debug, error, info};
 use models::*;
-use std::thread;
+use moka::future::Cache;
+use std::time::Duration;
 use utoipa_swagger_ui::SwaggerUi;
 
 use actix_files::Files;
@@ -36,7 +38,47 @@ use utoipa::{
     Modify, OpenApi,
 };
 
-use crate::{app_context::AppState, mqtt_instance::mqtt_instancer::MqttDaemon};
+use crate::{app_context::AppState, errors::HttpError, mqtt_instance::mqtt_instancer::MqttDaemon};
+
+async fn mqtt_listening(mqtt_app: AppState) {
+    let (client, mut eventloop) = MqttDaemon::new_daemon();
+    client
+        .subscribe("#", rumqttc::QoS::ExactlyOnce)
+        .await
+        .expect("Subscribe failed!");
+    'eventloop: loop {
+        let notification = eventloop.poll().await.unwrap();
+
+        if let Incoming(Packet::Publish(published)) = notification {
+            debug!(
+                "got topic={} payload={:?}",
+                published.topic, published.payload
+            );
+            let device = mqtt_app.get_device_by_topic(&published.topic).await;
+            let device = match device {
+                Ok(device) => device,
+                Err(e) => {
+                    error!(
+                        "Unable to find the device registered for the topic: {:?}",
+                        e
+                    );
+                    continue 'eventloop;
+                }
+            };
+            let res = mqtt_app
+                .add_device_records(&NewRecord {
+                    did: device.id,
+                    payload: &published.payload,
+                    timestamp: &Utc::now().naive_utc(),
+                })
+                .await;
+            if let Err(e) = res {
+                error!("Insert record failed: {:?}", e);
+                continue 'eventloop;
+            }
+        }
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -47,21 +89,17 @@ async fn main() -> std::io::Result<()> {
     let app_state: AppState = AppState {
         env: config.clone(),
         db: DBClient::new(&config.database_url).await,
+        rate_limit: Cache::builder()
+            .time_to_idle(Duration::from_secs(60)) // idle, 60s
+            .build(),
+        one_time_code: Cache::builder()
+            .time_to_live(Duration::from_secs(60 * 60 * 12)) // live, 12h
+            .build(),
     };
 
-    // MQTT Listening
-
-    thread::spawn(move || {
-        let (_, mut connection) = MqttDaemon::new_daemon();
-        for notification in connection.iter() {
-            if let Incoming(Packet::Publish(published)) = notification.unwrap() {
-                println!(
-                    "got topic={} payload={:?}",
-                    published.topic, published.payload
-                )
-            }
-        }
-    });
+    // Embedded MQTT Listening Daemon
+    let mqtt_app = app_state.clone(); // TODO: no need to share all members in the app state, only db
+    tokio::task::spawn(mqtt_listening(mqtt_app));
 
     // Generate OpenAPI docs
 
@@ -74,6 +112,8 @@ async fn main() -> std::io::Result<()> {
             user_login,
             me,
             update_user,
+            send_verification_email,
+            verify_login_by_email,
             //devices
             add_device,
             owned_devices,
@@ -169,6 +209,14 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api")
+                    .app_data(
+                        web::QueryConfig::default()
+                            // use custom error handler
+                            .error_handler(|err, _req| {
+                                // err.into()
+                                HttpError::bad_request(err.to_string()).into()
+                            }),
+                    )
                     // RIoT tag
                     .service(healthchecker)
                     //users
@@ -176,6 +224,8 @@ async fn main() -> std::io::Result<()> {
                     .service(user_login)
                     .service(me)
                     .service(update_user)
+                    .service(send_verification_email)
+                    .service(verify_login_by_email)
                     // Logged-in users only:
                     // devices
                     .service(add_device)
@@ -192,10 +242,11 @@ async fn main() -> std::io::Result<()> {
                     .service(upd_tag_info)
                     .service(tagged_devices)
                     .service(tag_device)
-                    .service(del_tag), // pipes
-                                       // TODO...
-                                       // Admin only:
-                                       // TODO...
+                    .service(del_tag),
+                // pipes
+                // TODO...
+                // Admin only:
+                // TODO...
             )
             .service(Files::new("/", "./public").index_file("index.html"))
             .default_service(web::route().to(notfound_404))

@@ -7,7 +7,7 @@ use actix_web::{
     web::{self},
     HttpResponse, Responder, ResponseError,
 };
-use chrono::{naive::serde::ts_milliseconds_option, NaiveDateTime};
+use chrono::Utc;
 use diesel::result::Error as DieselErr;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -30,14 +30,12 @@ pub struct NewDeviceForm {
     pub latitude: Option<f64>,
     /// Precision: 64 bits
     pub longitude: Option<f64>,
+    pub topic: String,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
 pub struct RecordForm {
     pub payload: Vec<u8>,
-    /// Precision: milliseconds
-    #[serde(with = "ts_milliseconds_option")]
-    pub timestamp: Option<NaiveDateTime>,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
@@ -99,7 +97,8 @@ pub(crate) async fn owned_devices(
                     "desc":"(optional)McDonald",
                     "dtype":1,
                     "latitude":114.514,
-                    "longitude":19.19810
+                    "longitude":19.19810,
+                    "topic":"test-key/home/light"
                 })
         ),
         responses(
@@ -132,6 +131,7 @@ pub(crate) async fn add_device(
         dtype,
         latitude,
         longitude,
+        topic,
     } = form.into_inner();
 
     let device = NewDevice {
@@ -141,6 +141,7 @@ pub(crate) async fn add_device(
         dtype,
         latitude,
         longitude,
+        topic: &topic,
     };
 
     match app.add_device(&device).await {
@@ -150,7 +151,7 @@ pub(crate) async fn add_device(
         }),
         Err(e) => {
             error!("{:?}", e);
-            HttpError::new(ErrorMessage::ServerError, 500).error_response()
+            HttpError::server_error(ErrorMessage::ServerError).error_response()
         }
     }
 }
@@ -406,16 +407,13 @@ pub(crate) async fn insert_device_records(
     } else {
         return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
     }
-    let RecordForm {
-        payload,
-        timestamp: timestamp_,
-    } = form.into_inner();
+    let RecordForm { payload } = form.into_inner();
 
     match app
         .add_device_records(&NewRecord {
             did,
             payload: &payload,
-            timestamp: timestamp_.as_ref(),
+            timestamp: &Utc::now().naive_utc(),
         })
         .await
     {

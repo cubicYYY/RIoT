@@ -63,6 +63,7 @@ pub struct NewUser<'a> {
     #[diesel(column_name = password)]
     pub hashed_password: &'a str,
     pub privilege: u32,
+    pub api_key: Option<&'a str>,
 }
 
 #[derive(Clone, Debug, AsChangeset, Identifiable)]
@@ -113,6 +114,7 @@ pub struct NewDevice<'a> {
     pub latitude: Option<f64>,
     /// Precision: 64 bits
     pub longitude: Option<f64>,
+    pub topic: &'a str,
 }
 
 #[derive(ToSchema, AsChangeset, Clone, Debug, Identifiable)]
@@ -185,7 +187,7 @@ pub struct NewRecord<'a> {
     pub did: u64,
     pub payload: &'a [u8],
     /// Precision: milliseconds
-    pub timestamp: Option<&'a NaiveDateTime>,
+    pub timestamp: &'a NaiveDateTime,
 }
 
 #[derive(ToSchema, Queryable, Selectable, Insertable, Identifiable, Clone, Debug)]

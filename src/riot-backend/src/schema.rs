@@ -13,6 +13,8 @@ diesel::table! {
         since -> Datetime,
         last_update -> Datetime,
         activated -> Bool,
+        #[max_length = 512]
+        topic -> Varchar,
     }
 }
 

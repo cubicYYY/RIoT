@@ -5,18 +5,23 @@ use crate::models::{
 use crate::utils::jwt::generate_token;
 use crate::{config::Config, db::DBClient};
 use actix_web::cookie::{self, Cookie};
-use chrono::Utc;
 use diesel::dsl::exists;
 use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
 use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use log::debug;
+use moka::future::Cache;
 
 #[derive(Clone)]
 pub struct AppState {
     pub env: Config,
     pub db: DBClient,
+    // TODO: Move caches out of App State
+    /// Access control. k: IP/Email
+    pub rate_limit: Cache<String, ()>,
+    /// For email verification
+    pub one_time_code: Cache<String, u64>, // TODO: This should be moced to somewhere like Redis
 }
 
 // User ops
@@ -82,6 +87,15 @@ impl AppState {
         device
             .select(Device::as_select())
             .filter(id.eq(id_))
+            .first(&mut conn)
+            .await
+    }
+    pub async fn get_device_by_topic(&self, topic_: &str) -> Result<Device, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.db.pool.get().await.unwrap();
+        device
+            .select(Device::as_select())
+            .filter(topic.eq(topic_))
             .first(&mut conn)
             .await
     }
@@ -203,13 +217,14 @@ impl AppState {
         let mut conn = self.db.pool.get().await.unwrap();
         conn.transaction(|conn| {
             async move {
+                // Insert the record
                 diesel::insert_into(record::table)
                     .values(form)
                     .execute(conn)
                     .await?;
                 // Update last update
                 diesel::update(device::table.filter(device::id.eq(form.did)))
-                    .set(device::last_update.eq(form.timestamp.unwrap_or(&Utc::now().naive_utc())))
+                    .set(device::last_update.eq(form.timestamp))
                     .execute(conn)
                     .await?;
                 diesel::result::QueryResult::Ok(())
@@ -256,6 +271,7 @@ impl AppState {
 mod tests {
     use chrono::NaiveDateTime;
     use diesel_async::RunQueryDsl;
+    use moka::future::Cache;
     use uuid::Uuid;
 
     use crate::{
@@ -275,6 +291,8 @@ mod tests {
         let app: AppState = AppState {
             env: config.clone(),
             db: DBClient::new(&config.database_url).await,
+            rate_limit: Cache::new(1024),
+            one_time_code: Cache::new(1024),
         };
 
         let uid = app
@@ -283,6 +301,7 @@ mod tests {
                 email: &format!("kisa{}ma@mail.com", Uuid::new_v4()),
                 hashed_password: &get_pwd_hash(&app.env.password_salt, "Aaa123,????".as_bytes()),
                 privilege: UserPrivilege::Normal as u32,
+                api_key: None,
             })
             .await
             .expect("Register failed");
@@ -307,6 +326,7 @@ mod tests {
         assert_eq!(modified_user.privilege, 4);
 
         // Add a device
+        let topic = format!("api-key-for-me/yyy/test{}", Uuid::new_v4());
         let dvc = NewDevice {
             uid: modified_user.id,
             name: "NewDeviceTest",
@@ -314,6 +334,7 @@ mod tests {
             dtype: 1,
             latitude: None,
             longitude: Some(12.3456),
+            topic: &topic,
         };
         let did = app
             .add_device(&dvc)
@@ -342,7 +363,7 @@ mod tests {
         app.add_device_records(&NewRecord {
             did,
             payload: &[1, 2, 3],
-            timestamp: NaiveDateTime::from_timestamp_millis(1662921288000).as_ref(),
+            timestamp: &NaiveDateTime::from_timestamp_millis(1662921288000).unwrap(),
         })
         .await
         .expect("Add record failed!");
@@ -397,6 +418,8 @@ mod tests {
         let app: AppState = AppState {
             env: config.clone(),
             db: DBClient::new(&config.database_url).await,
+            rate_limit: Cache::new(1024),
+            one_time_code: Cache::new(1024),
         };
         let mut conn = app.db.pool.get().await.unwrap();
 
@@ -411,6 +434,7 @@ mod tests {
                         "Aaa123,????".as_bytes(),
                     ),
                     privilege: UserPrivilege::Normal as u32,
+                    api_key: None,
                 })
                 .await
                 .expect("Register failed");

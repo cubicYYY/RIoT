@@ -10,7 +10,7 @@ use actix_web::{
     web::{self},
     HttpResponse, Responder, ResponseError,
 };
-use diesel::result::{Error as DieselErr, DatabaseErrorKind};
+use diesel::result::{DatabaseErrorKind, Error as DieselErr};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -363,7 +363,7 @@ pub(crate) async fn tag_device(
         }),
         Err(DieselErr::DatabaseError(DatabaseErrorKind::UniqueViolation, _msg)) => {
             HttpError::new(ErrorMessage::TagExist, 409).error_response()
-        },
+        }
         Err(e) => {
             error!("{:?}", e);
             HttpError::new(ErrorMessage::ServerError, 500).error_response()

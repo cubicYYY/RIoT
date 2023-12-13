@@ -41,6 +41,7 @@ pub enum ErrorMessage {
     ObjectNotFound,
     TokenNotProvided,
     PermissionDenied,
+    TooFast,
 }
 
 impl ToString for ErrorMessage {
@@ -86,7 +87,8 @@ impl ErrorMessage {
             ErrorMessage::TokenNotProvided => "You are not logged in, please provide token".into(),
             ErrorMessage::PermissionDenied => {
                 "You are not allowed to perform this action (resources not owned, or higher privilege required)".into()
-            }
+            },
+            ErrorMessage::TooFast => {"Your access is too frequent.".into()}
         }
     }
 }
@@ -116,6 +118,20 @@ impl HttpError {
         HttpError {
             message: message.into(),
             status: 403,
+        }
+    }
+
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        HttpError {
+            message: message.into(),
+            status: 400,
+        }
+    }
+
+    pub fn too_many_requests(message: impl Into<String>) -> Self {
+        HttpError {
+            message: message.into(),
+            status: 429,
         }
     }
 
@@ -164,6 +180,10 @@ impl ResponseError for HttpError {
                 message: cloned.message.into(),
             }),
             404 => HttpResponse::NotFound().json(Response {
+                status: "fail",
+                message: cloned.message.into(),
+            }),
+            429 => HttpResponse::TooManyRequests().json(Response {
                 status: "fail",
                 message: cloned.message.into(),
             }),

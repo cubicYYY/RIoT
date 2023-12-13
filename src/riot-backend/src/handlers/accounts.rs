@@ -2,7 +2,8 @@ use actix_web::{get, post, put, web, HttpResponse, Responder, ResponseError};
 use diesel::result::{DatabaseErrorKind, Error as DieselErr};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
+use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
 use crate::{
@@ -12,6 +13,16 @@ use crate::{
     utils::password::{get_pwd_hash, verify},
     AppState,
 };
+
+#[derive(Deserialize, IntoParams)]
+struct VerifyEmail {
+    account: String,
+}
+
+#[derive(Deserialize, IntoParams)]
+struct OneTimeCode {
+    code: String,
+}
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 pub struct RegisterForm {
@@ -115,12 +126,13 @@ pub(crate) async fn user_register(
         email,
         password,
     } = form.into_inner();
-
+    let api_key = Uuid::new_v4().to_string();
     let user = NewUser {
         username: &username.unwrap_or_else(|| email.clone()), // Better performance when using lazy calc!
         email: &email,
         hashed_password: &get_pwd_hash(app.env.password_salt, password.as_bytes()),
         privilege: UserPrivilege::Normal as u32,
+        api_key: Some(&api_key),
     };
 
     match app.register_user(&user).await {
@@ -130,7 +142,7 @@ pub(crate) async fn user_register(
         }),
         Err(DieselErr::DatabaseError(DatabaseErrorKind::UniqueViolation, _msg)) => {
             HttpError::new(ErrorMessage::UserExist, 409).error_response()
-        },
+        }
         Err(e) => {
             error!("{:?}", e);
             HttpError::new(ErrorMessage::ServerError, 500).error_response()
@@ -180,10 +192,12 @@ pub(crate) async fn user_login(
             if verify(&user.password, password.as_bytes()) {
                 let jwt_cookie = app.get_jwt_cookie(user.id);
                 if user.activated {
-                    HttpResponse::Ok().cookie(jwt_cookie.clone()).json(Response {
-                        status: "ok",
-                        message: jwt_cookie.value().to_string(),
-                    })
+                    HttpResponse::Ok()
+                        .cookie(jwt_cookie.clone())
+                        .json(Response {
+                            status: "ok",
+                            message: jwt_cookie.value().to_string(),
+                        })
                 } else {
                     HttpError::permission_denied(ErrorMessage::UserNotActivated).error_response()
                 }
@@ -292,10 +306,104 @@ pub(crate) async fn update_user(
         }),
         Err(diesel::result::Error::QueryBuilderError(_)) => {
             HttpError::not_modified(ErrorMessage::NoChange).error_response()
-        },
+        }
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()
         }
+    }
+}
+
+#[utoipa::path(
+    get,
+    context_path = "/api",
+    path = "/accounts/send_verification",
+    tag = "Account",
+    params(VerifyEmail),
+    responses(
+        (status = 200, description = "Ok", body = Response),
+        (status = 304, description = "No email provided", body = Response),
+        (status = 429, description = "Only 1 request is allowed in 60s", body = Response),
+        (status = 500, description = "Server internal error", body = Response),
+    )
+)]
+#[get("/accounts/send_verification")]
+pub(crate) async fn send_verification_email(
+    app: web::Data<AppState>,
+    query: web::Query<VerifyEmail>,
+) -> impl Responder {
+    let account = &query.account;
+    // Check access frequency
+    if app.rate_limit.get(account).await.is_some() {
+        return HttpError::too_many_requests(ErrorMessage::TooFast).error_response();
+    } else {
+        app.rate_limit.insert(account.into(), ()).await;
+    }
+    match app.get_user_by_username_or_email(account).await {
+        Ok(user) => {
+            let code = Uuid::new_v4();
+            app.one_time_code.insert(code.to_string(), user.id).await;
+            let verify_link =
+                app.env.host.to_string() + &format!("/api/accounts/verify?code={code}");
+            debug!("OTC link = {verify_link}");
+            // TODO: send email
+            HttpResponse::Ok().json(Response {
+                status: "ok",
+                message: "If the user exists, the verification email has been sent.".into(),
+            })
+        }
+        Err(e) => {
+            error!("{:?}", e);
+            // !Do not leak the info that the user not exists
+            HttpResponse::Ok().json(Response {
+                status: "ok",
+                message: "If the user exists, the verification email has been sent.".into(),
+            })
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    context_path = "/api",
+    path = "/accounts/verify",
+    tag = "Account",
+    params(OneTimeCode),
+    responses(
+        (status = 200, description = "Ok, the user is now activated and logged-in", body = Response),
+        (status = 403, description = "Verification failed", body = Response),
+        (status = 304, description = "No email provided", body = Response),
+        (status = 500, description = "Server internal error", body = Response),
+    )
+)]
+#[get("/accounts/verify")]
+/// Verify the email address of the user, or login by the email
+pub(crate) async fn verify_login_by_email(
+    app: web::Data<AppState>,
+    query: web::Query<OneTimeCode>,
+) -> impl Responder {
+    let code = &query.code;
+    if let Some(uid) = app.one_time_code.remove(code).await {
+        // Activate the user
+        app.update_user(&UpdateUser {
+            id: uid,
+            username: None,
+            email: None,
+            hashed_password: None,
+            privilege: None,
+            activated: Some(true), // activate!
+            api_key: None,
+        })
+        .await
+        .expect("User Activation Failed!");
+        let jwt_cookie = app.get_jwt_cookie(uid);
+        HttpResponse::Ok()
+            .cookie(jwt_cookie.clone())
+            .json(Response {
+                status: "ok",
+                message: jwt_cookie.value().to_string(),
+            })
+    } else {
+        HttpError::permission_denied(ErrorMessage::InvalidToken).error_response()
     }
 }
