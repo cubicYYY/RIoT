@@ -21,8 +21,9 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use log::{debug, error, info};
 use models::*;
 use moka::future::Cache;
-use std::time::Duration;
+use std::{thread, time::Duration};
 use utoipa_swagger_ui::SwaggerUi;
+use uuid::Uuid;
 
 use actix_files::Files;
 use actix_web::{
@@ -40,14 +41,33 @@ use utoipa::{
 
 use crate::{app_context::AppState, errors::HttpError, mqtt_instance::mqtt_instancer::MqttDaemon};
 
+#[actix_web::main]
 async fn mqtt_listening(mqtt_app: AppState) {
-    let (client, mut eventloop) = MqttDaemon::new_daemon();
+    // !important: enough randomness to avoid being kicked by a malicious client with the same id
+    let (mut client, mut eventloop) =
+        MqttDaemon::new_daemon(("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str());
     client
         .subscribe("#", rumqttc::QoS::ExactlyOnce)
         .await
         .expect("Subscribe failed!");
     'eventloop: loop {
-        let notification = eventloop.poll().await.unwrap();
+        let notification = eventloop.poll().await;
+        let notification = match notification {
+            Err(_) => {
+                // May be kicked...
+                let (new_client, new_eventloop) = MqttDaemon::new_daemon(
+                    ("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str(),
+                );
+                client = new_client;
+                eventloop = new_eventloop;
+                client
+                    .subscribe("#", rumqttc::QoS::ExactlyOnce)
+                    .await
+                    .expect("Subscribe failed!");
+                continue 'eventloop;
+            }
+            Ok(event) => event,
+        };
 
         if let Incoming(Packet::Publish(published)) = notification {
             debug!(
@@ -99,7 +119,13 @@ async fn main() -> std::io::Result<()> {
 
     // Embedded MQTT Listening Daemon
     let mqtt_app = app_state.clone(); // TODO: no need to share all members in the app state, only db
-    tokio::task::spawn(mqtt_listening(mqtt_app));
+    thread::Builder::new()
+        .name("MQTT-Listener".into())
+        .spawn(move || {
+            info!("Start MQTT thread");
+            mqtt_listening(mqtt_app);
+        })
+        .expect("Failed to create MQTT listener!");
 
     // Generate OpenAPI docs
 

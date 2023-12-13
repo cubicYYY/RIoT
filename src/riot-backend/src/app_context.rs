@@ -284,7 +284,7 @@ impl AppState {
                 .build();
         send_email_smtp(
             &mailer,
-            &format!("<{}>", self.env.email),
+            &format!("RIoT <{}>", self.env.email),
             &format!("<{}>", user_email),
             "RIoT Verification",
             body,
