@@ -17,12 +17,13 @@ use actix_web::Responder;
     params(),
 )]
 #[get("/healthchecker")]
+/// Always return "Ok", to check the website status
 pub(crate) async fn healthchecker() -> impl Responder {
     HttpResponse::Ok().content_type("text/plain").body("Ok")
 }
 
 // HTTP Codes
-pub async fn notfound_404() -> HttpResponse {
+pub(crate) async fn notfound_404() -> HttpResponse {
     let content =
         fs::read_to_string("./public/404.html").unwrap_or_else(|_| "Page not found".to_string());
     HttpResponse::NotFound().body(content)

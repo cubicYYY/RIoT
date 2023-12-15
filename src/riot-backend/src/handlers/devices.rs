@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     models::{NewDevice, NewRecord, UpdateDevice},
     UserPrivilege,
@@ -22,7 +24,8 @@ use crate::{
 };
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub struct NewDeviceForm {
+/// Web json form to add a new device
+pub struct NewDeviceForm { //TODO: validate
     pub name: String,
     pub desc: Option<String>,
     pub dtype: u32,
@@ -34,11 +37,13 @@ pub struct NewDeviceForm {
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
+/// Web json form (wrapper) to upload data
 pub struct RecordForm {
     pub payload: Vec<u8>,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
+/// Web json form to update a device
 pub struct UpdateDeviceForm {
     pub name: Option<String>,
     pub desc: Option<Option<String>>,
@@ -69,6 +74,7 @@ pub struct UpdateDeviceForm {
     "/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// List all devices owned by the user ("deleted" devices included)
 pub(crate) async fn owned_devices(
     cur_user: AuthenticatedUser,
     app: web::Data<AppState>,
@@ -115,6 +121,7 @@ pub(crate) async fn owned_devices(
     "/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Add a new device
 pub(crate) async fn add_device(
     cur_user: AuthenticatedUser,
     app: web::Data<AppState>,
@@ -174,6 +181,7 @@ pub(crate) async fn add_device(
     "/devices/{did}",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Device info
 pub(crate) async fn device_info(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -219,6 +227,7 @@ pub(crate) async fn device_info(
     "/devices/{did}",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Delete a device (soft delete, i.e. deactivate it)
 pub(crate) async fn del_device(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -286,6 +295,7 @@ pub(crate) async fn del_device(
     "/devices/{did}",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Update a device's information
 pub(crate) async fn upd_device_info(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -293,6 +303,12 @@ pub(crate) async fn upd_device_info(
     form: web::Json<UpdateDeviceForm>,
 ) -> impl Responder {
     let did = path.into_inner();
+
+    if let Err(e) = form.deref().validate() {
+        info!("Illegal input detected: {:?}", e);
+        return HttpError::new(e.to_string(), 400).error_response();
+    }
+
     let UpdateDeviceForm {
         name,
         desc,
@@ -350,6 +366,7 @@ pub(crate) async fn upd_device_info(
     "/devices/{did}/records",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Device records
 pub(crate) async fn device_records(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -396,6 +413,7 @@ pub(crate) async fn device_records(
     "/devices/{did}/records",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Insert new device data record
 pub(crate) async fn insert_device_records(
     path: web::Path<u64>,
     app: web::Data<AppState>,

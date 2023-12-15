@@ -136,8 +136,8 @@ async fn main() -> std::io::Result<()> {
             //accounts
             user_register,
             user_login,
-            me,
-            update_user,
+            user_info,
+            upd_user_info,
             send_verification_email,
             verify_login_by_email,
             //devices
@@ -197,9 +197,8 @@ async fn main() -> std::io::Result<()> {
                 SecurityScheme::ApiKey(ApiKey::Cookie(
                     ApiKeyValue::with_description(
                         "token".to_string(),
-                        "JWT token saved in Cookie (you may need to add the \
-                            `token` cookie by yourself via a browser extension like Cookie-Editor), \
-                            also available in HTTP `Authorization` header (Bearer format)".to_string()
+                        "JWT token saved in Cookie (you may need to add the `token` cookie by yourself \
+                            via a browser extension like Cookie-Editor, **but not here**)".to_string()
                     )
                 ))
             );
@@ -248,8 +247,8 @@ async fn main() -> std::io::Result<()> {
                     //users
                     .service(user_register)
                     .service(user_login)
-                    .service(me)
-                    .service(update_user)
+                    .service(user_info)
+                    .service(upd_user_info)
                     .service(send_verification_email)
                     .service(verify_login_by_email)
                     // Logged-in users only:

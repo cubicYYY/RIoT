@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use actix_web::{get, post, put, web, HttpResponse, Responder, ResponseError};
 use diesel::result::{DatabaseErrorKind, Error as DieselErr};
 use log::{debug, error, info};
@@ -15,16 +17,19 @@ use crate::{
 };
 
 #[derive(Deserialize, IntoParams)]
+/// Param in path, user account(email/username) to verify
 struct VerifyEmail {
     account: String,
 }
 
 #[derive(Deserialize, IntoParams)]
+/// Param in path, one-time verification code
 struct OneTimeCode {
     code: String,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
+/// Web json form to register a new user
 pub struct RegisterForm {
     #[validate(
         length(min = 4, max = 16, message = "Username must be 4-64 characters"),
@@ -74,15 +79,18 @@ fn validate_pwd(password: &str) -> Result<(), ValidationError> {
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
+/// Web json form to login
 pub struct LoginForm {
     #[serde(alias = "username")]
     #[serde(alias = "email")]
+    /// aliases: `username` `email`
     pub account: String,
     pub password: String,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub struct UpdateUserForm {
+#[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
+/// Web json form to update a user
+pub struct UpdateUserForm { // TODO: validate
     pub username: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
@@ -112,6 +120,8 @@ pub struct UpdateUserForm {
         )
     )]
 #[post("/accounts/register")]
+/// Register a new user
+/// WARNING: The password is transfered as a plain text, HTTPS is a must here
 pub(crate) async fn user_register(
     form: web::Json<RegisterForm>,
     app: web::Data<AppState>,
@@ -172,6 +182,8 @@ pub(crate) async fn user_register(
         )
     )]
 #[post("/accounts/login")]
+/// Login with a password
+/// To login with an email, use `send_verification` endpoint instead
 pub(crate) async fn user_login(
     form: web::Json<LoginForm>,
     app: web::Data<AppState>,
@@ -218,7 +230,7 @@ pub(crate) async fn user_login(
 #[utoipa::path(
         get,
         context_path = "/api",
-        path = "/accounts/me",
+        path = "/accounts/user_info",
         tag = "Account",
         responses(
             (status = 200, description = "User struct", body = User),
@@ -230,8 +242,9 @@ pub(crate) async fn user_login(
             ("jwt_cookie" = [])
         )
     )]
-#[get("/accounts/me", wrap = "RequireAuth::no_auth()")]
-pub(crate) async fn me(cur_user: Option<AuthenticatedUser>) -> impl Responder {
+#[get("/accounts/user_info", wrap = "RequireAuth::no_auth()")]
+/// Current user info
+pub(crate) async fn user_info(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     match cur_user {
         Some(user) => {
             let mut user = (*user).clone();
@@ -249,7 +262,7 @@ pub(crate) async fn me(cur_user: Option<AuthenticatedUser>) -> impl Responder {
 #[utoipa::path(
     put,
     context_path = "/api",
-    path = "/accounts/me",
+    path = "/accounts/user_info",
     tag = "Account",
     request_body(
         content = UpdateUserForm,
@@ -273,14 +286,21 @@ pub(crate) async fn me(cur_user: Option<AuthenticatedUser>) -> impl Responder {
     )
 )]
 #[put(
-    "/accounts/me",
+    "/accounts/user_info",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
-pub(crate) async fn update_user(
+/// Update user personal info(email/username/password)
+pub(crate) async fn upd_user_info(
     app: web::Data<AppState>,
     cur_user: AuthenticatedUser,
     form: web::Json<UpdateUserForm>,
 ) -> impl Responder {
+
+    if let Err(e) = form.deref().validate() {
+        info!("Illegal input detected: {:?}", e);
+        return HttpError::new(e.to_string(), 400).error_response();
+    }
+
     let UpdateUserForm {
         username,
         email,
@@ -328,6 +348,8 @@ pub(crate) async fn update_user(
     )
 )]
 #[get("/accounts/send_verification")]
+/// Send the verification to the user (specified by email/username) for activation / logging
+/// ONLY actually send if the user exists.
 pub(crate) async fn send_verification_email(
     app: web::Data<AppState>,
     query: web::Query<VerifyEmail>,
@@ -344,12 +366,9 @@ pub(crate) async fn send_verification_email(
             let code = Uuid::new_v4();
             app.one_time_code.insert(code.to_string(), user.id).await;
             let verify_link =
-                app.env.host.to_string() + &format!("/api/accounts/verify?code={code}");
+                "http://".to_string() + app.env.host + &format!("/api/accounts/verify?code={code}");
             debug!("OTC link = {verify_link}");
-            if let Err(e) = app
-                .send_verify_mail(&user.email, &verify_link)
-                .await
-            {
+            if let Err(e) = app.send_verify_mail(&user.email, &verify_link).await {
                 error!("{}", e);
             }
             HttpResponse::Ok().json(Response {

@@ -11,9 +11,9 @@ use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
 use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
-use lettre::transport::smtp::authentication::{Credentials, Mechanism};
+use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::PoolConfig;
-use lettre::{AsyncSmtpTransport, SmtpTransport, Tokio1Executor};
+use lettre::{AsyncSmtpTransport, Tokio1Executor};
 use log::debug;
 use moka::future::Cache;
 
@@ -282,8 +282,6 @@ impl AppState {
         let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(self.env.smtp_host)?
             // Add credentials for authentication
             .credentials(smtp_credentials)
-            // Configure expected authentication mechanism
-            .authentication(vec![Mechanism::Plain])
             // Connection pool settings
             .pool_config(PoolConfig::new().max_size(20))
             .build();

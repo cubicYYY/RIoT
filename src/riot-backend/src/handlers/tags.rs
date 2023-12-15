@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     app_context::AppState,
     errors::{ErrorMessage, HttpError},
@@ -19,18 +21,21 @@ use validator::Validate;
 use crate::middlewares::RequireAuth;
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub struct UpdateTagForm {
+/// Web json form to update a tag
+pub struct UpdateTagForm { // TODO: validate
     pub name: Option<String>,
     pub desc: Option<Option<String>>,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub struct TagDeviceForm {
+/// Web json form to give a device a tag
+pub struct TagDeviceForm { // TODO: validate
     pub did: u64,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub struct NewTagForm {
+/// Web json form to add a new tag
+pub struct NewTagForm { // TODO: validate
     pub name: String,
     pub desc: Option<String>,
 }
@@ -55,6 +60,7 @@ pub struct NewTagForm {
     "/tags",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// List all tags owned ("deleted" tags included)
 pub(crate) async fn owned_tags(
     cur_user: AuthenticatedUser,
     app: web::Data<AppState>,
@@ -89,6 +95,7 @@ pub(crate) async fn owned_tags(
     "/tags",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Add a new tag
 pub(crate) async fn add_tag(
     cur_user: AuthenticatedUser,
     app: web::Data<AppState>,
@@ -138,6 +145,7 @@ pub(crate) async fn add_tag(
     "/tags/{tid}",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Get tag info
 pub(crate) async fn tag_info(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -183,6 +191,7 @@ pub(crate) async fn tag_info(
     "/tags/{tid}",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Soft delete a tag (i.e. deactivate)
 pub(crate) async fn del_tag(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -235,6 +244,7 @@ pub(crate) async fn del_tag(
     "/tags/{tid}",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
+/// Update tag info
 pub(crate) async fn upd_tag_info(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -242,6 +252,12 @@ pub(crate) async fn upd_tag_info(
     form: web::Json<UpdateTagForm>,
 ) -> impl Responder {
     let tid = path.into_inner();
+
+    if let Err(e) = form.deref().validate() {
+        info!("Illegal input detected: {:?}", e);
+        return HttpError::new(e.to_string(), 400).error_response();
+    }
+    
     let UpdateTagForm { name, desc } = form.into_inner();
 
     match app
@@ -289,7 +305,7 @@ pub(crate) async fn upd_tag_info(
     "/tags/{tid}/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
-// Devices tagged with this tag
+/// Devices tagged with this tag
 pub(crate) async fn tagged_devices(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -339,7 +355,7 @@ pub(crate) async fn tagged_devices(
     "/tags/{tid}/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
-// Tag a device
+/// Tag a device
 pub(crate) async fn tag_device(
     path: web::Path<u64>,
     app: web::Data<AppState>,
@@ -393,7 +409,7 @@ pub(crate) async fn tag_device(
     "/tags/{tid}/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]
-// Remove a device tag
+/// Remove a device tag
 pub(crate) async fn untag_device(
     path: web::Path<u64>,
     app: web::Data<AppState>,

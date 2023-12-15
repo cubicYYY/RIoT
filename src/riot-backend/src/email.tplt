@@ -1,3 +1,3 @@
-<h2>RIoT Verification Email</h2>
-<b>Your verification link: {link}</b>
+<h2>RIoT Verification Email</h2><br>
+<b>Your verification link: {link}</b><br>
 This link will expire in 24h.

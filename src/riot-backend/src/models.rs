@@ -14,6 +14,8 @@ use utoipa::ToSchema;
 // HTTP Responses
 
 #[derive(Serialize, Deserialize, ToSchema)]
+/// HTTP universal response form.
+/// `message` segment can be used to transfer some handy optional data.
 pub struct Response {
     pub status: &'static str,
     pub message: String,
@@ -41,6 +43,7 @@ pub enum UserPrivilege {
 #[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Identifiable, Clone, Debug)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(Mysql))]
+/// RIoT platform user
 pub struct User {
     pub id: u64,
     pub username: String,
@@ -83,6 +86,7 @@ pub struct UpdateUser<'a> {
 #[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Identifiable, Clone, Debug)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(Mysql))]
+/// IoT device
 pub struct Device {
     pub id: u64,
     pub uid: u64,
@@ -117,7 +121,7 @@ pub struct NewDevice<'a> {
     pub topic: &'a str,
 }
 
-#[derive(ToSchema, AsChangeset, Clone, Debug, Identifiable)]
+#[derive(AsChangeset, Clone, Debug, Identifiable)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(Mysql))]
 pub struct UpdateDevice<'a> {
@@ -137,6 +141,7 @@ pub struct UpdateDevice<'a> {
 #[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Insertable, Clone, Debug)]
 #[diesel(table_name = crate::schema::tag)]
 #[diesel(check_for_backend(Mysql))]
+/// Tag for devices
 pub struct Tag {
     pub id: u64,
     pub uid: u64,
@@ -155,7 +160,7 @@ pub struct NewTag<'a> {
     pub activated: bool,
 }
 
-#[derive(ToSchema, AsChangeset, Clone, Debug, Identifiable)]
+#[derive(AsChangeset, Clone, Debug, Identifiable)]
 #[diesel(table_name = crate::schema::tag)]
 #[diesel(check_for_backend(Mysql))]
 pub struct UpdateTag<'a> {
@@ -170,6 +175,7 @@ pub struct UpdateTag<'a> {
 )]
 #[diesel(table_name = crate::schema::record)]
 #[diesel(check_for_backend(Mysql))]
+/// Device data record
 pub struct Record {
     id: u64,
     /// Device id
@@ -180,7 +186,7 @@ pub struct Record {
     timestamp: NaiveDateTime,
 }
 
-#[derive(ToSchema, Clone, Debug, Insertable)]
+#[derive(Clone, Debug, Insertable)]
 #[diesel(table_name = crate::schema::record)]
 #[diesel(check_for_backend(Mysql))]
 pub struct NewRecord<'a> {
@@ -194,6 +200,7 @@ pub struct NewRecord<'a> {
 #[diesel(table_name = crate::schema::owns)]
 #[diesel(check_for_backend(Mysql))]
 #[diesel(primary_key(tid, did))]
+/// Device(did) owns a Tag(tid) 
 pub struct Owns {
     /// Tag id
     tid: u64,
