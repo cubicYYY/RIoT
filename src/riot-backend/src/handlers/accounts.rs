@@ -347,7 +347,7 @@ pub(crate) async fn send_verification_email(
                 app.env.host.to_string() + &format!("/api/accounts/verify?code={code}");
             debug!("OTC link = {verify_link}");
             if let Err(e) = app
-                .send_verify_mail(&user.email, format!("Your link: {verify_link}"))
+                .send_verify_mail(&user.email, &verify_link)
                 .await
             {
                 error!("{}", e);

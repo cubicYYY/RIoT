@@ -39,7 +39,7 @@ features = ["mysql", "async-connection-wrapper", "deadpool"]
 [dependencies.lettre]
 version = "0.11.2"
 default-features = false
-features = ["smtp-transport", "tokio1-rustls-tls", "hostname", "builder"]
+features = ["smtp-transport", "tokio1-rustls-tls", "hostname", "builder", "pool"]
 
 [dependencies.uuid]
 version = "1.6.1"

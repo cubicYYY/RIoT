@@ -7,9 +7,9 @@ lazy_static! {
     static ref JWT_MAXAGE: String = std::env::var("JWT_MAXAGE").unwrap_or("86400".into());
     static ref PASSWORD_SALT: String = std::env::var("PWDSALT").unwrap_or("r1oTs4lt".into());
     static ref HOST: String = std::env::var("RIOT_HOST").unwrap_or("127.0.0.1:8888".into());
-    static ref EMAIL: String = std::env::var("RIOT_EMAIL").unwrap_or("your_riot@email.com".into());
+    static ref EMAIL: String = std::env::var("RIOT_EMAIL").unwrap_or("rust_iot@126.com".into());
     static ref SMTP_HOST: String =
-        std::env::var("RIOT_SMTP_HOST").unwrap_or("smtp.email.com".into());
+        std::env::var("RIOT_SMTP_HOST").unwrap_or("smtp.126.com".into());
     static ref SMTP_NAME: String = std::env::var("RIOT_SMTP_NAME").unwrap_or("rust_iot".into());
     static ref SMTP_PWD: String =
         std::env::var("RIOT_SMTP_PWD").unwrap_or("AAAAAAAAAAAAAAAA".into());

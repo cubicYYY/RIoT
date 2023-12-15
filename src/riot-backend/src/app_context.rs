@@ -11,8 +11,9 @@ use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
 use diesel::{debug_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::{AsyncSmtpTransport, Tokio1Executor};
+use lettre::transport::smtp::authentication::{Credentials, Mechanism};
+use lettre::transport::smtp::PoolConfig;
+use lettre::{AsyncSmtpTransport, SmtpTransport, Tokio1Executor};
 use log::debug;
 use moka::future::Cache;
 
@@ -271,23 +272,28 @@ impl AppState {
     pub async fn send_verify_mail(
         &self,
         user_email: &str,
-        body: String,
+        link: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let smtp_credentials = Credentials::new(
             self.env.smtp_name.to_string(),
             self.env.smtp_pwd.to_string(),
         );
 
-        let mailer: AsyncSmtpTransport<Tokio1Executor> =
-            AsyncSmtpTransport::<Tokio1Executor>::relay(self.env.smtp_host)?
-                .credentials(smtp_credentials)
-                .build();
+        let mailer = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(self.env.smtp_host)?
+            // Add credentials for authentication
+            .credentials(smtp_credentials)
+            // Configure expected authentication mechanism
+            .authentication(vec![Mechanism::Plain])
+            // Connection pool settings
+            .pool_config(PoolConfig::new().max_size(20))
+            .build();
+        
         send_email_smtp(
             &mailer,
             &format!("RIoT <{}>", self.env.email),
             &format!("<{}>", user_email),
             "RIoT Verification",
-            body,
+            format!(include_str!("email.tplt"), link = link),
         )
         .await
     }
