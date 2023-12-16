@@ -200,7 +200,7 @@ pub struct NewRecord<'a> {
 #[diesel(table_name = crate::schema::owns)]
 #[diesel(check_for_backend(Mysql))]
 #[diesel(primary_key(tid, did))]
-/// Device(did) owns a Tag(tid) 
+/// Device(did) owns a Tag(tid)
 pub struct Owns {
     /// Tag id
     tid: u64,

@@ -22,21 +22,25 @@ use crate::middlewares::RequireAuth;
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to update a tag
-pub struct UpdateTagForm { // TODO: validate
+pub struct UpdateTagForm {
+    #[validate(length(max = 256, message = "Tag name must be less than 255 characters"))]
     pub name: Option<String>,
+    #[validate(length(max = 10000, message = "Must be less than 10000 characters"))]
     pub desc: Option<Option<String>>,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to give a device a tag
-pub struct TagDeviceForm { // TODO: validate
+pub struct TagDeviceForm {
     pub did: u64,
 }
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to add a new tag
-pub struct NewTagForm { // TODO: validate
+pub struct NewTagForm {
+    #[validate(length(max = 256, message = "Tag name must be less than 255 characters"))]
     pub name: String,
+    #[validate(length(max = 10000, message = "Must be less than 10000 characters"))]
     pub desc: Option<String>,
 }
 // tags
@@ -101,7 +105,7 @@ pub(crate) async fn add_tag(
     app: web::Data<AppState>,
     form: web::Json<NewTagForm>,
 ) -> impl Responder {
-    if let Err(e) = form.0.validate() {
+    if let Err(e) = form.deref().validate() {
         info!("Illegal input detected: {:?}", e);
         return HttpError::new(e.to_string(), 400).error_response();
     }
@@ -257,7 +261,7 @@ pub(crate) async fn upd_tag_info(
         info!("Illegal input detected: {:?}", e);
         return HttpError::new(e.to_string(), 400).error_response();
     }
-    
+
     let UpdateTagForm { name, desc } = form.into_inner();
 
     match app
@@ -363,6 +367,12 @@ pub(crate) async fn tag_device(
     form: web::Json<TagDeviceForm>,
 ) -> impl Responder {
     let tid = path.into_inner();
+
+    if let Err(e) = form.deref().validate() {
+        info!("Illegal input detected: {:?}", e);
+        return HttpError::new(e.to_string(), 400).error_response();
+    }
+
     if Ok(true) == app.tag_belongs_to(tid, cur_user.id).await {
     } else {
         return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();

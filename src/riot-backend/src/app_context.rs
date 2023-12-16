@@ -285,7 +285,7 @@ impl AppState {
             // Connection pool settings
             .pool_config(PoolConfig::new().max_size(20))
             .build();
-        
+
         send_email_smtp(
             &mailer,
             &format!("RIoT <{}>", self.env.email),

@@ -1,3 +1,12 @@
+use chrono::Utc;
+use log::{debug, error};
+use rumqttc::Packet;
+use uuid::Uuid;
+
+use crate::{app_context::AppState, models::NewRecord};
+
+use self::mqtt_instancer::MqttDaemon;
+
 pub mod mqtt_instancer {
     use rumqttc::{AsyncClient, EventLoop, MqttOptions};
     use std::time::Duration;
@@ -9,6 +18,65 @@ pub mod mqtt_instancer {
             let mut mqtt_options = MqttOptions::new(id, "localhost", 1883);
             mqtt_options.set_keep_alive(Duration::from_secs(30));
             AsyncClient::new(mqtt_options, 1024)
+        }
+    }
+}
+
+#[actix_web::main]
+pub async fn mqtt_listening(mqtt_app: AppState) {
+    // !important: enough randomness to avoid being kicked by a malicious client with the same id
+    let (mut client, mut eventloop) =
+        MqttDaemon::new_daemon(("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str());
+    client
+        .subscribe("#", rumqttc::QoS::ExactlyOnce)
+        .await
+        .expect("Subscribe failed!");
+    'eventloop: loop {
+        let notification = eventloop.poll().await;
+        let notification = match notification {
+            Err(_) => {
+                // May be kicked...
+                let (new_client, new_eventloop) = MqttDaemon::new_daemon(
+                    ("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str(),
+                );
+                client = new_client;
+                eventloop = new_eventloop;
+                client
+                    .subscribe("#", rumqttc::QoS::ExactlyOnce)
+                    .await
+                    .expect("Subscribe failed!");
+                continue 'eventloop;
+            }
+            Ok(event) => event,
+        };
+
+        if let rumqttc::Event::Incoming(Packet::Publish(published)) = notification {
+            debug!(
+                "got topic={} payload={:?}",
+                published.topic, published.payload
+            );
+            let device = mqtt_app.get_device_by_topic(&published.topic).await;
+            let device = match device {
+                Ok(device) => device,
+                Err(e) => {
+                    error!(
+                        "Unable to find the device registered for the topic: {:?}",
+                        e
+                    );
+                    continue 'eventloop;
+                }
+            };
+            let res = mqtt_app
+                .add_device_records(&NewRecord {
+                    did: device.id,
+                    payload: &published.payload,
+                    timestamp: &Utc::now().naive_utc(),
+                })
+                .await;
+            if let Err(e) = res {
+                error!("Insert record failed: {:?}", e);
+                continue 'eventloop;
+            }
         }
     }
 }

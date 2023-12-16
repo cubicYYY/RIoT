@@ -27,6 +27,7 @@ validator = { version = "0.12", features = ["derive"] }
 rust-argon2 = "2.0"
 rand = "0.8.5"
 moka = { version = "0.12", features = ["future"] }
+config = "0.13.4"
 
 [dependencies.diesel]
 version = "2.1.0"

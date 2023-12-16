@@ -5,11 +5,9 @@ mod errors;
 mod handlers;
 mod middlewares;
 mod models;
-mod mqtt_instance;
 mod schema;
 mod utils;
 
-use chrono::Utc;
 use config::Config;
 use db::*;
 
@@ -18,12 +16,11 @@ use diesel_async::AsyncMysqlConnection;
 use handlers::*;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::{debug, error, info};
+use log::info;
 use models::*;
 use moka::future::Cache;
 use std::{thread, time::Duration};
 use utoipa_swagger_ui::SwaggerUi;
-use uuid::Uuid;
 
 use actix_files::Files;
 use actix_web::{
@@ -32,73 +29,12 @@ use actix_web::{
     App, HttpServer,
 };
 
-use rumqttc::Event::Incoming;
-use rumqttc::Packet;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
 };
 
-use crate::{app_context::AppState, errors::HttpError, mqtt_instance::mqtt_instancer::MqttDaemon};
-
-#[actix_web::main]
-async fn mqtt_listening(mqtt_app: AppState) {
-    // !important: enough randomness to avoid being kicked by a malicious client with the same id
-    let (mut client, mut eventloop) =
-        MqttDaemon::new_daemon(("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str());
-    client
-        .subscribe("#", rumqttc::QoS::ExactlyOnce)
-        .await
-        .expect("Subscribe failed!");
-    'eventloop: loop {
-        let notification = eventloop.poll().await;
-        let notification = match notification {
-            Err(_) => {
-                // May be kicked...
-                let (new_client, new_eventloop) = MqttDaemon::new_daemon(
-                    ("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str(),
-                );
-                client = new_client;
-                eventloop = new_eventloop;
-                client
-                    .subscribe("#", rumqttc::QoS::ExactlyOnce)
-                    .await
-                    .expect("Subscribe failed!");
-                continue 'eventloop;
-            }
-            Ok(event) => event,
-        };
-
-        if let Incoming(Packet::Publish(published)) = notification {
-            debug!(
-                "got topic={} payload={:?}",
-                published.topic, published.payload
-            );
-            let device = mqtt_app.get_device_by_topic(&published.topic).await;
-            let device = match device {
-                Ok(device) => device,
-                Err(e) => {
-                    error!(
-                        "Unable to find the device registered for the topic: {:?}",
-                        e
-                    );
-                    continue 'eventloop;
-                }
-            };
-            let res = mqtt_app
-                .add_device_records(&NewRecord {
-                    did: device.id,
-                    payload: &published.payload,
-                    timestamp: &Utc::now().naive_utc(),
-                })
-                .await;
-            if let Err(e) = res {
-                error!("Insert record failed: {:?}", e);
-                continue 'eventloop;
-            }
-        }
-    }
-}
+use crate::{app_context::AppState, errors::HttpError};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -123,7 +59,7 @@ async fn main() -> std::io::Result<()> {
         .name("MQTT-Listener".into())
         .spawn(move || {
             info!("Start MQTT thread");
-            mqtt_listening(mqtt_app);
+            utils::mqtt_instance::mqtt_listening(mqtt_app);
         })
         .expect("Failed to create MQTT listener!");
 

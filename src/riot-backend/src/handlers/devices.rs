@@ -25,15 +25,20 @@ use crate::{
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to add a new device
-pub struct NewDeviceForm { //TODO: validate
+pub struct NewDeviceForm {
+    #[validate(length(max = 256, message = "Device name must be less than 255 characters"))]
     pub name: String,
+    #[validate(length(max = 10000, message = "Must be less than 10000 characters"))]
     pub desc: Option<String>,
     pub dtype: u32,
+    #[validate(range(min=-90.0, max=90.0, message = "Invalid latitude"))]
     /// Precision: 64 bits
     pub latitude: Option<f64>,
+    #[validate(range(min=-180.0, max=180.0, message = "Invalid longitude"))]
     /// Precision: 64 bits
     pub longitude: Option<f64>,
-    pub topic: String,
+    #[validate(length(max = 512, message = "Topic must be less than 255 characters"))]
+    pub topic: String, // TODO: validate topic format
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
@@ -45,11 +50,16 @@ pub struct RecordForm {
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to update a device
 pub struct UpdateDeviceForm {
+    // TODO: validate
+    #[validate(length(max = 256, message = "Device name must be less than 255 characters"))]
     pub name: Option<String>,
+    #[validate(length(max = 10000, message = "Must be less than 10000 characters"))]
     pub desc: Option<Option<String>>,
     pub dtype: Option<u32>,
+    #[validate(range(min=-90.0, max=90.0, message = "Invalid latitude"))]
     /// Precision: 64 bits
     pub latitude: Option<Option<f64>>,
+    #[validate(range(min=-180.0, max=180.0, message = "Invalid longitude"))]
     /// Precision: 64 bits
     pub longitude: Option<Option<f64>>,
 }
@@ -127,7 +137,7 @@ pub(crate) async fn add_device(
     app: web::Data<AppState>,
     form: web::Json<NewDeviceForm>,
 ) -> impl Responder {
-    if let Err(e) = form.0.validate() {
+    if let Err(e) = form.deref().validate() {
         info!("Illegal input detected: {:?}", e);
         return HttpError::new(e.to_string(), 400).error_response();
     }

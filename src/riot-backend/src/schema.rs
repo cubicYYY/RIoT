@@ -4,7 +4,7 @@ diesel::table! {
     device (id) {
         id -> Unsigned<Bigint>,
         uid -> Unsigned<Bigint>,
-        #[max_length = 255]
+        #[max_length = 256]
         name -> Varchar,
         desc -> Nullable<Text>,
         dtype -> Unsigned<Integer>,
@@ -38,7 +38,7 @@ diesel::table! {
     tag (id) {
         id -> Unsigned<Bigint>,
         uid -> Unsigned<Bigint>,
-        #[max_length = 255]
+        #[max_length = 256]
         name -> Varchar,
         desc -> Nullable<Text>,
         activated -> Bool,

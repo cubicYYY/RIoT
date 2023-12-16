@@ -28,23 +28,6 @@ struct OneTimeCode {
     code: String,
 }
 
-#[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
-/// Web json form to register a new user
-pub struct RegisterForm {
-    #[validate(
-        length(min = 4, max = 16, message = "Username must be 4-64 characters"),
-        custom = "validate_username"
-    )]
-    pub username: Option<String>,
-    #[validate(email)]
-    pub email: String,
-    #[validate(
-        length(min = 8, max = 64, message = "Password must be 8-64 characters"),
-        custom = "validate_pwd"
-    )]
-    pub password: String,
-}
-
 fn validate_username(password: &str) -> Result<(), ValidationError> {
     let is_valid_username = password.chars().all(|c| c.is_alphanumeric());
 
@@ -78,6 +61,23 @@ fn validate_pwd(password: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
+#[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
+/// Web json form to register a new user
+pub struct RegisterForm {
+    #[validate(
+        length(min = 4, max = 64, message = "Username must be 4-64 characters"),
+        custom = "validate_username"
+    )]
+    pub username: Option<String>,
+    #[validate(email)]
+    pub email: String,
+    #[validate(
+        length(min = 8, max = 64, message = "Password must be 8-64 characters"),
+        custom = "validate_pwd"
+    )]
+    pub password: String,
+}
+
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to login
 pub struct LoginForm {
@@ -90,9 +90,18 @@ pub struct LoginForm {
 
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to update a user
-pub struct UpdateUserForm { // TODO: validate
+pub struct UpdateUserForm {
+    #[validate(
+        length(min = 4, max = 64, message = "Username must be 4-64 characters"),
+        custom = "validate_username"
+    )]
     pub username: Option<String>,
+    #[validate(email)]
     pub email: Option<String>,
+    #[validate(
+        length(min = 8, max = 64, message = "Password must be 8-64 characters"),
+        custom = "validate_pwd"
+    )]
     pub password: Option<String>,
 }
 
@@ -126,7 +135,7 @@ pub(crate) async fn user_register(
     form: web::Json<RegisterForm>,
     app: web::Data<AppState>,
 ) -> impl Responder {
-    if let Err(e) = form.0.validate() {
+    if let Err(e) = form.deref().validate() {
         info!("Illegal input detected: {:?}", e);
         return HttpError::new(e.to_string(), 400).error_response();
     }
@@ -295,7 +304,6 @@ pub(crate) async fn upd_user_info(
     cur_user: AuthenticatedUser,
     form: web::Json<UpdateUserForm>,
 ) -> impl Responder {
-
     if let Err(e) = form.deref().validate() {
         info!("Illegal input detected: {:?}", e);
         return HttpError::new(e.to_string(), 400).error_response();
