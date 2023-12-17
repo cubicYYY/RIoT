@@ -38,7 +38,7 @@ pub enum ErrorMessage {
     UserExist,
     TagExist,
     UserNotActivated,
-    ObjectNotFound,
+    UpdateFailed,
     TokenNotProvided,
     PermissionDenied,
     TooFast,
@@ -83,7 +83,7 @@ impl ErrorMessage {
             ErrorMessage::InvalidEmail => "Email format is invalid".into(),
             ErrorMessage::InvalidPassword => "Password format or length is invalid".into(),
             ErrorMessage::InvalidUsername => "Username format or length is invalid".into(),
-            ErrorMessage::ObjectNotFound => "Object not exists or not owned by you".into(),
+            ErrorMessage::UpdateFailed => "Object not exists / not owned by you, or the update makes no change".into(),
             ErrorMessage::TokenNotProvided => "You are not logged in, please provide token".into(),
             ErrorMessage::PermissionDenied => {
                 "You are not allowed to perform this action (resources not owned, or higher privilege required)".into()

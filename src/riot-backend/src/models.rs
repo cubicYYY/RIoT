@@ -97,6 +97,7 @@ pub struct Device {
     pub latitude: Option<f64>,
     /// Precision: 64 bits
     pub longitude: Option<f64>,
+    pub topic: String, // TODO: wildcards
     /// Precision: milliseconds
     #[serde(with = "ts_milliseconds")]
     pub since: NaiveDateTime,

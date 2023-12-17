@@ -3,7 +3,7 @@ use log::{debug, error};
 use rumqttc::Packet;
 use uuid::Uuid;
 
-use crate::{app_context::AppState, models::NewRecord};
+use crate::{db::DBClient, models::NewRecord};
 
 use self::mqtt_instancer::MqttDaemon;
 
@@ -23,7 +23,7 @@ pub mod mqtt_instancer {
 }
 
 #[actix_web::main]
-pub async fn mqtt_listening(mqtt_app: AppState) {
+pub async fn mqtt_listening(db: DBClient) {
     // !important: enough randomness to avoid being kicked by a malicious client with the same id
     let (mut client, mut eventloop) =
         MqttDaemon::new_daemon(("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str());
@@ -55,7 +55,7 @@ pub async fn mqtt_listening(mqtt_app: AppState) {
                 "got topic={} payload={:?}",
                 published.topic, published.payload
             );
-            let device = mqtt_app.get_device_by_topic(&published.topic).await;
+            let device = db.get_device_by_topic(&published.topic).await;
             let device = match device {
                 Ok(device) => device,
                 Err(e) => {
@@ -66,7 +66,7 @@ pub async fn mqtt_listening(mqtt_app: AppState) {
                     continue 'eventloop;
                 }
             };
-            let res = mqtt_app
+            let res = db
                 .add_device_records(&NewRecord {
                     did: device.id,
                     payload: &published.payload,

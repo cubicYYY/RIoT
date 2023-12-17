@@ -149,12 +149,12 @@ pub(crate) async fn user_register(
     let user = NewUser {
         username: &username.unwrap_or_else(|| email.clone()), // Better performance when using lazy calc!
         email: &email,
-        hashed_password: &get_pwd_hash(app.env.password_salt, password.as_bytes()),
+        hashed_password: &get_pwd_hash(app.env.riot.password_salt.as_bytes(), password.as_bytes()),
         privilege: UserPrivilege::Normal as u32,
         api_key: Some(&api_key),
     };
 
-    match app.register_user(&user).await {
+    match app.db.register_user(&user).await {
         Ok(_) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: "".into(),
@@ -202,7 +202,7 @@ pub(crate) async fn user_login(
     // ! NOTE: We MUST perform this hash comparison using a special function provided in the library, otherwise
     // ! it can be vulnerable to time-based attacks.
 
-    match app.get_user_by_username_or_email(&account).await {
+    match app.db.get_user_by_username_or_email(&account).await {
         Ok(user) => {
             debug!(
                 "{:?}, provided={:?}--{:?}",
@@ -315,12 +315,13 @@ pub(crate) async fn upd_user_info(
         password,
     } = form.into_inner();
     match app
+        .db
         .update_user(&UpdateUser {
             id: cur_user.id,
             username: username.as_deref(),
             email: email.as_deref(),
             hashed_password: password
-                .map(|pwd| get_pwd_hash(app.env.password_salt, pwd.as_bytes()))
+                .map(|pwd| get_pwd_hash(app.env.riot.password_salt.as_bytes(), pwd.as_bytes()))
                 .as_deref(),
             privilege: None,
             activated: None,
@@ -369,12 +370,12 @@ pub(crate) async fn send_verification_email(
     } else {
         app.rate_limit.insert(account.into(), ()).await;
     }
-    match app.get_user_by_username_or_email(account).await {
+    match app.db.get_user_by_username_or_email(account).await {
         Ok(user) => {
             let code = Uuid::new_v4();
             app.one_time_code.insert(code.to_string(), user.id).await;
             let verify_link =
-                "http://".to_string() + app.env.host + &format!("/api/accounts/verify?code={code}");
+                app.env.riot.host.to_string() + &format!("/api/accounts/verify?code={code}");
             debug!("OTC link = {verify_link}");
             if let Err(e) = app.send_verify_mail(&user.email, &verify_link).await {
                 error!("{}", e);
@@ -417,17 +418,18 @@ pub(crate) async fn verify_login_by_email(
     let code = &query.code;
     if let Some(uid) = app.one_time_code.remove(code).await {
         // Activate the user
-        app.update_user(&UpdateUser {
-            id: uid,
-            username: None,
-            email: None,
-            hashed_password: None,
-            privilege: None,
-            activated: Some(true), // activate!
-            api_key: None,
-        })
-        .await
-        .expect("User Activation Failed!");
+        app.db
+            .update_user(&UpdateUser {
+                id: uid,
+                username: None,
+                email: None,
+                hashed_password: None,
+                privilege: None,
+                activated: Some(true), // activate!
+                api_key: None,
+            })
+            .await
+            .expect("User Activation Failed!");
         let jwt_cookie = app.get_jwt_cookie(uid);
         HttpResponse::Ok()
             .cookie(jwt_cookie.clone())

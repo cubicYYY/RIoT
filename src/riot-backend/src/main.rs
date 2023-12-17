@@ -8,7 +8,6 @@ mod models;
 mod schema;
 mod utils;
 
-use config::Config;
 use db::*;
 
 use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
@@ -41,25 +40,14 @@ async fn main() -> std::io::Result<()> {
     // Run-time env building
     env_logger::init();
 
-    let config = Config::init();
-    let app_state: AppState = AppState {
-        env: config.clone(),
-        db: DBClient::new(&config.database_url).await,
-        rate_limit: Cache::builder()
-            .time_to_idle(Duration::from_secs(60)) // idle, 60s
-            .build(),
-        one_time_code: Cache::builder()
-            .time_to_live(Duration::from_secs(60 * 60 * 12)) // live, 12h
-            .build(),
-    };
-
+    let config = &config::CONFIG;
+    let mqtt_db_conn = DBClient::new(&DBClient::get_database_url());
     // Embedded MQTT Listening Daemon
-    let mqtt_app = app_state.clone(); // TODO: no need to share all members in the app state, only db
     thread::Builder::new()
         .name("MQTT-Listener".into())
         .spawn(move || {
             info!("Start MQTT thread");
-            utils::mqtt_instance::mqtt_listening(mqtt_app);
+            utils::mqtt_instance::mqtt_listening(mqtt_db_conn);
         })
         .expect("Failed to create MQTT listener!");
 
@@ -148,7 +136,9 @@ async fn main() -> std::io::Result<()> {
     pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
     tokio::task::spawn_blocking(move || {
         use diesel::prelude::Connection;
-        let conn = AsyncConnectionWrapper::<AsyncMysqlConnection>::establish(&config.database_url)?;
+        let conn = AsyncConnectionWrapper::<AsyncMysqlConnection>::establish(
+            &DBClient::get_database_url(),
+        )?;
         let mut async_wrapper = AsyncConnectionWrapper::<AsyncMysqlConnection>::from(conn);
         async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
         Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
@@ -161,7 +151,16 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(app_state.clone()))
+            .app_data(web::Data::new(AppState {
+                env: config,
+                db: DBClient::new(&DBClient::get_database_url()),
+                rate_limit: Cache::builder()
+                    .time_to_idle(Duration::from_secs(60)) // idle, 60s
+                    .build(),
+                one_time_code: Cache::builder()
+                    .time_to_live(Duration::from_secs(60 * 60 * 12)) // live, 12h
+                    .build(),
+            }))
             .wrap(Logger::default())
             .service(web::redirect("/api-doc", "/api-doc/"))
             .service(

@@ -1753,6 +1753,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "js_option"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68421373957a1593a767013698dbf206e2b221eefe97a44d98d18672ff38423c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "json5"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2905,11 +2914,13 @@ dependencies = [
  "env_logger",
  "futures",
  "futures-util",
+ "js_option",
  "jsonwebtoken",
  "lazy_static",
  "lettre",
  "log",
  "moka",
+ "once_cell",
  "rand",
  "rumqttc",
  "rumqttd",

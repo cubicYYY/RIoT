@@ -69,7 +69,7 @@ pub(crate) async fn owned_tags(
     cur_user: AuthenticatedUser,
     app: web::Data<AppState>,
 ) -> impl Responder {
-    let tags = app.get_owned_tags(cur_user.id).await;
+    let tags = app.db.get_owned_tags(cur_user.id).await;
     match tags {
         Ok(tags) => HttpResponse::Ok().json(tags),
         Err(e) => {
@@ -119,7 +119,7 @@ pub(crate) async fn add_tag(
         activated: true,
     };
 
-    match app.add_tag(&tag).await {
+    match app.db.add_tag(&tag).await {
         Ok(id) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: id.to_string(),
@@ -156,16 +156,16 @@ pub(crate) async fn tag_info(
     cur_user: AuthenticatedUser,
 ) -> impl Responder {
     let tid = path.into_inner();
-    match app.get_tag_by_id(tid).await {
+    match app.db.get_tag_by_id(tid).await {
         Ok(device) => {
             if device.uid == cur_user.id {
                 HttpResponse::Ok().json(device)
             } else {
-                HttpError::not_found(ErrorMessage::ObjectNotFound).error_response()
+                HttpError::not_found(ErrorMessage::UpdateFailed).error_response()
             }
         }
         Err(DieselErr::NotFound) => {
-            HttpError::not_found(ErrorMessage::ObjectNotFound).error_response()
+            HttpError::not_found(ErrorMessage::UpdateFailed).error_response()
         }
         Err(e) => {
             error!("{:?}", e);
@@ -203,6 +203,7 @@ pub(crate) async fn del_tag(
 ) -> impl Responder {
     let tid = path.into_inner();
     match app
+        .db
         .update_tag(
             &UpdateTag {
                 id: tid,
@@ -218,7 +219,7 @@ pub(crate) async fn del_tag(
             status: "ok",
             message: "".into(),
         }),
-        Ok(_) => HttpError::not_found(ErrorMessage::ObjectNotFound).error_response(),
+        Ok(_) => HttpError::not_found(ErrorMessage::UpdateFailed).error_response(),
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()
@@ -265,6 +266,7 @@ pub(crate) async fn upd_tag_info(
     let UpdateTagForm { name, desc } = form.into_inner();
 
     match app
+        .db
         .update_tag(
             &UpdateTag {
                 id: tid,
@@ -280,7 +282,7 @@ pub(crate) async fn upd_tag_info(
             status: "ok",
             message: "".into(),
         }),
-        Ok(_) => HttpError::not_found(ErrorMessage::ObjectNotFound).error_response(),
+        Ok(_) => HttpError::not_found(ErrorMessage::UpdateFailed).error_response(),
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()
@@ -316,11 +318,11 @@ pub(crate) async fn tagged_devices(
     cur_user: AuthenticatedUser,
 ) -> impl Responder {
     let tid = path.into_inner();
-    if Ok(true) == app.tag_belongs_to(tid, cur_user.id).await {
+    if Ok(true) == app.db.tag_belongs_to(tid, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
-    let dids = app.get_dids_under_tag(tid).await;
+    let dids = app.db.get_dids_under_tag(tid).await;
     let dids = match dids {
         Ok(dids) => dids,
         Err(e) => {
@@ -328,7 +330,7 @@ pub(crate) async fn tagged_devices(
             return HttpError::server_error(ErrorMessage::ServerError).error_response();
         }
     };
-    match app.get_device_by_ids(dids.as_ref()).await {
+    match app.db.get_device_by_ids(dids.as_ref()).await {
         Ok(devices) => HttpResponse::Ok().json(devices),
         Err(e) => {
             error!("{:?}", e);
@@ -373,16 +375,16 @@ pub(crate) async fn tag_device(
         return HttpError::new(e.to_string(), 400).error_response();
     }
 
-    if Ok(true) == app.tag_belongs_to(tid, cur_user.id).await {
+    if Ok(true) == app.db.tag_belongs_to(tid, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
     let TagDeviceForm { did } = form.into_inner();
-    if Ok(true) == app.device_belongs_to(did, cur_user.id).await {
+    if Ok(true) == app.db.device_belongs_to(did, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
-    match app.tag_device(tid, did).await {
+    match app.db.tag_device(tid, did).await {
         Ok(_) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: "".into(),
@@ -427,16 +429,16 @@ pub(crate) async fn untag_device(
     form: web::Json<TagDeviceForm>,
 ) -> impl Responder {
     let tid = path.into_inner();
-    if Ok(true) == app.tag_belongs_to(tid, cur_user.id).await {
+    if Ok(true) == app.db.tag_belongs_to(tid, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
     let TagDeviceForm { did } = form.into_inner();
-    if Ok(true) == app.device_belongs_to(did, cur_user.id).await {
+    if Ok(true) == app.db.device_belongs_to(did, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
-    match app.untag_device(tid, did).await {
+    match app.db.untag_device(tid, did).await {
         Ok(_) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: "".into(),

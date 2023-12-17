@@ -1,46 +1,76 @@
+use config::Config as ConfigUtil;
 use lazy_static::lazy_static;
+use log::warn;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
 
 lazy_static! {
-    static ref DATABASE_URL: String =
-        std::env::var("DATABASE_URL").unwrap_or("mysql://root:root@localhost:3306/riot".into());
-    static ref JWT_SECRET: String = std::env::var("JWT_SECRET_KEY").unwrap_or("RiotSecret!".into());
-    static ref JWT_MAXAGE: String = std::env::var("JWT_MAXAGE").unwrap_or("86400".into());
-    static ref PASSWORD_SALT: String = std::env::var("PWDSALT").unwrap_or("r1oTs4lt".into());
-    static ref HOST: String = std::env::var("RIOT_HOST").unwrap_or("127.0.0.1:8888".into());
-    static ref EMAIL: String = std::env::var("RIOT_EMAIL").unwrap_or("rust_iot@qq.com".into());
-    static ref SMTP_HOST: String = std::env::var("RIOT_SMTP_HOST").unwrap_or("smtp.qq.com".into());
-    static ref SMTP_NAME: String =
-        std::env::var("RIOT_SMTP_NAME").unwrap_or("rust_iot@qq.com".into());
-    static ref SMTP_PWD: String =
-        std::env::var("RIOT_SMTP_PWD").unwrap_or("AAAAAAAAAAAAAAAA".into());
+    pub static ref CONFIG: Lazy<Config> = Lazy::new(|| { Config::init() });
 }
 
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct SiteConfig {
+    /// Your site host, e.g. "http://myriot.com"
+    pub host: String,
+    pub password_salt: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct EmailConfig {
+    pub addr: String,
+    pub smtp_relay_server: String,
+    /// SMTP username
+    pub smtp_username: String,
+    /// SMTP password/code
+    pub smtp_password: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct MysqlConfig {
+    pub username: String,
+    pub password: String,
+    /// MySQL host e.g. "127.0.0.1"
+    pub host: String,
+    /// MySQL port
+    pub port: u16,
+    pub database: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct JwtConfig {
+    pub maxage: i64,
+    pub secret: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
-    pub database_url: &'static str,
-    pub jwt_secret: &'static [u8],
-    pub jwt_maxage: i64,
-    pub password_salt: &'static [u8],
-    pub host: &'static str,
-    pub email: &'static str,
-    pub smtp_host: &'static str,
-    pub smtp_name: &'static str,
-    pub smtp_pwd: &'static str,
+    pub riot: SiteConfig,
+    pub email: EmailConfig,
+    pub jwt: JwtConfig,
+    pub mysql: MysqlConfig,
 }
 
 impl Config {
     /// Read config from environment variables, set to default values if not set
-    pub fn init() -> Config {
-        Config {
-            database_url: &DATABASE_URL,
-            jwt_secret: &JWT_SECRET.as_bytes(),
-            jwt_maxage: JWT_MAXAGE.parse::<i64>().unwrap(),
-            password_salt: &PASSWORD_SALT.as_bytes(),
-            host: &HOST,
-            email: &EMAIL,
-            smtp_host: &SMTP_HOST,
-            smtp_name: &SMTP_NAME,
-            smtp_pwd: &SMTP_PWD,
-        }
+    pub fn init() -> Self {
+        let config_arg = std::env::args().nth(1);
+        let config_file = if let Some(config) = config_arg.as_ref() {
+            println!("The config file is {}", config);
+            config
+        } else {
+            warn!("Config file not specified. Fallback to `riot_config.toml` .");
+            "riot_config.toml"
+        };
+        let settings = ConfigUtil::builder()
+            .add_source(config::File::with_name(config_file))
+            // .add_source(config::Environment::with_prefix("RIOT"))
+            .build()
+            .expect("Failed to build config");
+        dbg!(settings.try_deserialize::<Config>().unwrap())
     }
 }

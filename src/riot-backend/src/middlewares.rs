@@ -119,7 +119,7 @@ where
             let srv = Rc::clone(&self.service);
             let least_priv = self.least_priv.clone();
             return async move {
-                let result = cloned_app_state.get_user_by_api_key(key.as_str()).await;
+                let result = cloned_app_state.db.get_user_by_api_key(key.as_str()).await;
                 let user = result.map_err(|_e| {
                     ErrorUnauthorized(ErrorResponse {
                         status: "fail".to_string(),
@@ -158,7 +158,7 @@ where
             return async move { srv.call(req).await }.boxed_local();
         }
 
-        let user_id = match parse_token(&token.unwrap(), app_state.env.jwt_secret) {
+        let user_id = match parse_token(&token.unwrap(), app_state.env.jwt.secret.as_bytes()) {
             Ok(id) => id,
             Err(e) => {
                 error!("{}", e);
@@ -176,6 +176,7 @@ where
 
         async move {
             let result = cloned_app_state
+                .db
                 .get_user_by_id(user_id.parse::<u64>().unwrap())
                 .await;
 

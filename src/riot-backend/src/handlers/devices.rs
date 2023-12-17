@@ -11,7 +11,7 @@ use actix_web::{
 };
 use chrono::Utc;
 use diesel::result::Error as DieselErr;
-use log::{error, info};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -50,7 +50,6 @@ pub struct RecordForm {
 #[derive(Validate, Serialize, Deserialize, ToSchema, Clone, Debug)]
 /// Web json form to update a device
 pub struct UpdateDeviceForm {
-    // TODO: validate
     #[validate(length(max = 256, message = "Device name must be less than 255 characters"))]
     pub name: Option<String>,
     #[validate(length(max = 10000, message = "Must be less than 10000 characters"))]
@@ -89,7 +88,7 @@ pub(crate) async fn owned_devices(
     cur_user: AuthenticatedUser,
     app: web::Data<AppState>,
 ) -> impl Responder {
-    let devices = app.get_owned_devices(cur_user.id).await;
+    let devices = app.db.get_owned_devices(cur_user.id).await;
     match devices {
         Ok(devices) => HttpResponse::Ok().json(devices),
         Err(e) => {
@@ -161,7 +160,7 @@ pub(crate) async fn add_device(
         topic: &topic,
     };
 
-    match app.add_device(&device).await {
+    match app.db.add_device(&device).await {
         Ok(id) => HttpResponse::Ok().json(Response {
             status: "ok",
             message: id.to_string(),
@@ -198,16 +197,16 @@ pub(crate) async fn device_info(
     cur_user: AuthenticatedUser,
 ) -> impl Responder {
     let did = path.into_inner();
-    match app.get_device_by_id(did).await {
+    match app.db.get_device_by_id(did).await {
         Ok(device) => {
             if device.uid == cur_user.id {
                 HttpResponse::Ok().json(device)
             } else {
-                HttpError::not_found(ErrorMessage::ObjectNotFound).error_response()
+                HttpError::not_found(ErrorMessage::UpdateFailed).error_response()
             }
         }
         Err(DieselErr::NotFound) => {
-            HttpError::not_found(ErrorMessage::ObjectNotFound).error_response()
+            HttpError::not_found(ErrorMessage::UpdateFailed).error_response()
         }
         Err(e) => {
             error!("{:?}", e);
@@ -245,6 +244,7 @@ pub(crate) async fn del_device(
 ) -> impl Responder {
     let did = path.into_inner();
     match app
+        .db
         .update_device(
             &UpdateDevice {
                 id: did,
@@ -264,7 +264,7 @@ pub(crate) async fn del_device(
             status: "ok",
             message: "".into(),
         }),
-        Ok(_) => HttpError::not_found(ErrorMessage::ObjectNotFound).error_response(),
+        Ok(_) => HttpError::not_found(ErrorMessage::UpdateFailed).error_response(),
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()
@@ -284,9 +284,9 @@ pub(crate) async fn del_device(
                 {
                     "name":"new_name",
                     "desc":"Balala",
-                    "dtype":"1",
-                    "latitude":"114.514",
-                    "longitude":"19.19810"
+                    "dtype":1,
+                    "latitude":14.514,
+                    "longitude":19.19810
                 })
         ),
         responses(
@@ -326,8 +326,9 @@ pub(crate) async fn upd_device_info(
         latitude,
         longitude,
     } = form.into_inner();
-
+    debug!("{:?}", latitude);
     match app
+        .db
         .update_device(
             &UpdateDevice {
                 id: did,
@@ -347,7 +348,7 @@ pub(crate) async fn upd_device_info(
             status: "ok",
             message: "".into(),
         }),
-        Ok(_) => HttpError::not_found(ErrorMessage::ObjectNotFound).error_response(),
+        Ok(_) => HttpError::not_found(ErrorMessage::UpdateFailed).error_response(),
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()
@@ -383,11 +384,11 @@ pub(crate) async fn device_records(
     cur_user: AuthenticatedUser,
 ) -> impl Responder {
     let did = path.into_inner();
-    if Ok(true) == app.device_belongs_to(did, cur_user.id).await {
+    if Ok(true) == app.db.device_belongs_to(did, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
-    let records = app.get_device_records(did).await;
+    let records = app.db.get_device_records(did).await;
     match records {
         Ok(records) => HttpResponse::Ok().json(records),
         Err(e) => {
@@ -431,13 +432,14 @@ pub(crate) async fn insert_device_records(
     cur_user: AuthenticatedUser,
 ) -> impl Responder {
     let did = path.into_inner();
-    if Ok(true) == app.device_belongs_to(did, cur_user.id).await {
+    if Ok(true) == app.db.device_belongs_to(did, cur_user.id).await {
     } else {
-        return HttpError::not_found(ErrorMessage::ObjectNotFound).error_response();
+        return HttpError::not_found(ErrorMessage::UpdateFailed).error_response();
     }
     let RecordForm { payload } = form.into_inner();
 
     match app
+        .db
         .add_device_records(&NewRecord {
             did,
             payload: &payload,
