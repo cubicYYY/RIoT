@@ -416,11 +416,12 @@ pub(crate) async fn verify_login_by_email(
     query: web::Query<OneTimeCode>,
 ) -> impl Responder {
     let code = &query.code;
-    if let Some(uid) = app.one_time_code.remove(code).await {
+    dbg!(&app.one_time_code);
+    if let Some(uid) = &app.one_time_code.remove(code).await {
         // Activate the user
         app.db
             .update_user(&UpdateUser {
-                id: uid,
+                id: *uid,
                 username: None,
                 email: None,
                 hashed_password: None,
@@ -430,7 +431,7 @@ pub(crate) async fn verify_login_by_email(
             })
             .await
             .expect("User Activation Failed!");
-        let jwt_cookie = app.get_jwt_cookie(uid);
+        let jwt_cookie = app.get_jwt_cookie(*uid);
         HttpResponse::Ok()
             .cookie(jwt_cookie.clone())
             .json(Response {

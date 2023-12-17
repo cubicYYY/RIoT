@@ -148,19 +148,20 @@ async fn main() -> std::io::Result<()> {
     info!("Database init finished!");
 
     // Register services (API endpoints and user interfaces routes)
-
+    let app_state = AppState {
+        env: config,
+        db: DBClient::new(&DBClient::get_database_url()),
+        rate_limit: Cache::builder()
+            .time_to_idle(Duration::from_secs(60)) // idle, 60s
+            .build(),
+        one_time_code: Cache::builder()
+            .time_to_live(Duration::from_secs(60 * 60 * 24)) // live, 24h
+            .build(),
+    };
+    let app_data = web::Data::new(app_state);
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(AppState {
-                env: config,
-                db: DBClient::new(&DBClient::get_database_url()),
-                rate_limit: Cache::builder()
-                    .time_to_idle(Duration::from_secs(60)) // idle, 60s
-                    .build(),
-                one_time_code: Cache::builder()
-                    .time_to_live(Duration::from_secs(60 * 60 * 12)) // live, 12h
-                    .build(),
-            }))
+            .app_data(web::Data::clone(&app_data)) // !WARN: Must cloned into the app, see: https://github.com/moka-rs/moka/issues/358
             .wrap(Logger::default())
             .service(web::redirect("/api-doc", "/api-doc/"))
             .service(

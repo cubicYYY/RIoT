@@ -80,7 +80,7 @@ pub struct UpdateUser<'a> {
     pub hashed_password: Option<&'a str>,
     pub privilege: Option<u32>,
     pub activated: Option<bool>,
-    pub api_key: Option<Option<&'a str>>,
+    pub api_key: Option<Option<&'a str>>, // TODO: use js-option for tri-state semantic
 }
 
 #[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Identifiable, Clone, Debug)]
