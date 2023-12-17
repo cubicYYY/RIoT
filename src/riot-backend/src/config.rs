@@ -1,12 +1,9 @@
 use config::Config as ConfigUtil;
-use lazy_static::lazy_static;
 use log::warn;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
-lazy_static! {
-    pub static ref CONFIG: Lazy<Config> = Lazy::new(|| { Config::init() });
-}
+pub static CONFIG: Lazy<Config> = Lazy::new(|| Config::init());
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

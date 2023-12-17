@@ -2916,7 +2916,6 @@ dependencies = [
  "futures-util",
  "js_option",
  "jsonwebtoken",
- "lazy_static",
  "lettre",
  "log",
  "moka",

@@ -1,4 +1,4 @@
-use crate::config::CONFIG;
+use crate::config::Config;
 use crate::db::DBClient;
 use crate::utils::email::send_email_smtp;
 use crate::utils::jwt::generate_token;
@@ -12,7 +12,7 @@ use moka::future::Cache;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub env: &'static CONFIG,
+    pub env: &'static Config,
     pub db: DBClient,
     // TODO: Move caches out of App State
     /// Access control. k: IP/Email
