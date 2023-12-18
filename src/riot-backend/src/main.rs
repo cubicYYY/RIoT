@@ -161,7 +161,9 @@ async fn main() -> std::io::Result<()> {
     let app_data = web::Data::new(app_state);
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::clone(&app_data)) // !WARN: Must cloned into the app, see: https://github.com/moka-rs/moka/issues/358
+            .app_data(web::Data::clone(&app_data))
+            // !WARN: Must cloned the data into the server,
+            // !otherwise each worker thread will have their own states without sharing!
             .wrap(Logger::default())
             .service(web::redirect("/api-doc", "/api-doc/"))
             .service(
