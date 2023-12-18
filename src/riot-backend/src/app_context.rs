@@ -14,7 +14,6 @@ use moka::future::Cache;
 pub struct AppState {
     pub env: &'static Config,
     pub db: DBClient,
-    // TODO: Move caches out of App State
     /// Access control. k: IP/Email
     pub rate_limit: Cache<String, ()>,
     /// For email verification
