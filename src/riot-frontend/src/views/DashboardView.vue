@@ -1,10 +1,4 @@
 <template>
-  <a-config-provider :theme="{
-    algorithm: theme.darkAlgorithm,
-    token: {
-      // colorPrimary: '#222222',
-    },
-  }">
     <a-space direction="vertical" :style="{ width: '100%' }">
       <a-layout :style="appStyle">
         <RiotSidebar />
@@ -16,11 +10,9 @@
         </a-layout>
       </a-layout>
     </a-space>
-  </a-config-provider>
 </template>
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue';
-import { theme } from 'ant-design-vue';
 import RiotHeader from '../components/RiotHeader.vue'
 import RiotSidebar from '../components/RiotSidebar.vue'
 const appStyle: CSSProperties = {

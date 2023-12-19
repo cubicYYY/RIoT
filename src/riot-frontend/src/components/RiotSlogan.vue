@@ -9,7 +9,7 @@ const sloganStyle: CSSProperties = {
     textAlign: 'center',
     justifyContent: 'center',
     width: '100%',
-    height: '8%',
+    height: '64px',
     fontSize: '2rem',
     color: 'black',
     fontStyle: 'italic',

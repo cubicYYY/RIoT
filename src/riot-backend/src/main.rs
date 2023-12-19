@@ -87,6 +87,7 @@ async fn main() -> std::io::Result<()> {
             Device,
             Tag,
             Record,
+            ServerStatistic,
             RegisterForm,
             LoginForm,
             UpdateUserForm,
@@ -96,7 +97,7 @@ async fn main() -> std::io::Result<()> {
             UpdateTagForm,
             TagDeviceForm,
             NewTagForm,
-            Response
+            Response,
         )),
         modifiers(&SecurityJwt)
     )]

@@ -1,19 +1,16 @@
 <template>
     <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" collapsible>
         <a-flex :style="siderStyle" vertical>
-            <Slogan id="slogan"/>
-            <a-menu mode="inline" theme="light" :collapsed="useCollapseStore().collapsed" :style="sidebarMenuStyle">
-                <a-menu-item v-for="(item, i) in navItems" :key="i" :icon="item.icon">
-                    <router-link :to="item.route"><span>{{ item.label }}</span></router-link>
-                </a-menu-item>
+            <Slogan id="slogan" />
+            <a-menu id="side-bar-menu-main" mode="inline" theme="light" :inlineCollapsed="useCollapseStore().collapsed"
+                :style="sidebarMenuStyle" class="ant-menu-inline" :items="navItems">
             </a-menu>
         </a-flex>
     </a-layout-sider>
 </template>
 
 <script lang="ts" setup>
-import type { CSSProperties } from 'ant-design-vue/es/_util/cssinjs/hooks/useStyleRegister';
-import { h, reactive } from 'vue';
+import { h, reactive, type CSSProperties } from 'vue';
 import Slogan from './RiotSlogan.vue';
 import {
     DashboardOutlined,
@@ -22,6 +19,7 @@ import {
     BookOutlined,
 } from '@ant-design/icons-vue';
 import { defineStore } from 'pinia'
+import { RouterLink } from 'vue-router';
 const siderStyle: CSSProperties = {
     minHeight: '100vh',
 };
@@ -30,31 +28,28 @@ const sidebarMenuStyle: CSSProperties = {
     flexDirection: 'column',
     flex: 1,
 };
+
 interface NavBar {
     label: string,
     key: string,
     icon: any,
-    route: string,
 }
 function getItem(
-    label: string,
-    key: string,
+    label: any,
+    key: any,
     icon: any,
-    route: string,
 ): NavBar {
     return {
         key,
         icon,
         label,
-        route,
     } as NavBar;
 }
-
 const navItems: any[] = reactive([
-    getItem('仪表盘主页', 'home', () => h(DashboardOutlined), '/'),
-    getItem('设备管理', 'device', () => h(DatabaseOutlined), '/device'),
-    getItem('标签（聚类）管理', 'tag', () => h(TagsOutlined), '/tag'),
-    getItem('API文档', 'apidoc', () => h(BookOutlined), '/api-doc'),
+    getItem(h(RouterLink, { to: '/home' }, () => '仪表盘主页'), 'home', () => h(DashboardOutlined)),
+    getItem(h(RouterLink, { to: '/device' }, () => '设备管理'), 'device', () => h(DatabaseOutlined)),
+    getItem(h(RouterLink, { to: '/tag' }, () => '标签（聚类）管理'), 'tag', () => h(TagsOutlined)),
+    getItem(h(RouterLink, { to: '/api-doc', target: '_blank' }, () => 'API文档...'), 'apidoc', () => h(BookOutlined)),
 ]);
 
 </script>
