@@ -1,6 +1,6 @@
 <template>
   <a-layout-header :style="headerStyle">
-    <a-button type="primary" style="margin: 16px;" @click="isCollapsed.toggle()">
+    <a-button type="dashed" style="margin: 16px;" @click="isCollapsed.toggle()">
       <MenuUnfoldOutlined v-if="isCollapsed.collapsed" class="trigger" />
       <MenuFoldOutlined v-else class="trigger" />
     </a-button>
@@ -22,7 +22,6 @@ const headerStyle: CSSProperties = {
   top: 0,
   right: 0,
   paddingLeft: 0,
-  backgroundColor: '#7dbcea',
 };
 const isCollapsed = useCollapseStore();
 

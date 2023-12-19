@@ -10,7 +10,9 @@
         <RiotSidebar />
         <a-layout :style="rightLayoutStyle">
           <RiotHeader />
-          <a-layout-content :style="contentStyle">aaaa</a-layout-content>
+          <a-layout-content :style="contentStyle">
+            <router-view></router-view>
+          </a-layout-content>
         </a-layout>
       </a-layout>
     </a-space>
@@ -38,7 +40,6 @@ const contentStyle: CSSProperties = {
   lineHeight: '32px',
   padding: '12px',
   color: '#fff',
-  backgroundColor: '#108ee9',
   overflow: 'clip',
   flex: 1,
 };

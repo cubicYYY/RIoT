@@ -1,47 +1,60 @@
 <template>
     <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" collapsible>
-        <Slogan id="slogan"/>
-        <a-menu mode="inline" :collapsed="useCollapseStore().collapsed">
-            <a-menu :items="navItems"></a-menu>
-        </a-menu>
+        <a-flex :style="siderStyle" vertical>
+            <Slogan id="slogan"/>
+            <a-menu mode="inline" theme="light" :collapsed="useCollapseStore().collapsed" :style="sidebarMenuStyle">
+                <a-menu-item v-for="(item, i) in navItems" :key="i" :icon="item.icon">
+                    <router-link :to="item.route"><span>{{ item.label }}</span></router-link>
+                </a-menu-item>
+            </a-menu>
+        </a-flex>
     </a-layout-sider>
 </template>
 
 <script lang="ts" setup>
+import type { CSSProperties } from 'ant-design-vue/es/_util/cssinjs/hooks/useStyleRegister';
 import { h, reactive } from 'vue';
 import Slogan from './RiotSlogan.vue';
 import {
-    HomeOutlined,
+    DashboardOutlined,
     DatabaseOutlined,
     TagsOutlined,
-    InfoCircleOutlined,
     BookOutlined,
 } from '@ant-design/icons-vue';
-import type { ItemType } from 'ant-design-vue';
 import { defineStore } from 'pinia'
-
+const siderStyle: CSSProperties = {
+    minHeight: '100vh',
+};
+const sidebarMenuStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+};
+interface NavBar {
+    label: string,
+    key: string,
+    icon: any,
+    route: string,
+}
 function getItem(
     label: string,
     key: string,
-    icon?: any,
-    children?: ItemType[],
-    type?: 'group',
-): ItemType {
+    icon: any,
+    route: string,
+): NavBar {
     return {
         key,
         icon,
-        children,
         label,
-        type,
-    } as ItemType;
+        route,
+    } as NavBar;
 }
 
-const navItems: ItemType[] = reactive([
-    getItem('首页', 'home', h(HomeOutlined)),
-    getItem('设备管理', 'device', h(DatabaseOutlined)),
-    getItem('标签（聚类）管理', 'tag', h(TagsOutlined)),
-    getItem('站点状态', 'site', h(InfoCircleOutlined)),
-    getItem('API文档', 'apidoc', h(BookOutlined)),
+const navItems: any[] = reactive([
+    getItem('仪表盘主页', 'home', () => h(DashboardOutlined), '/'),
+    getItem('设备管理', 'device', () => h(DatabaseOutlined), '/device'),
+    getItem('标签（聚类）管理', 'tag', () => h(TagsOutlined), '/tag'),
+    getItem('API文档', 'apidoc', () => h(BookOutlined), '/api-doc'),
 ]);
 
 </script>
