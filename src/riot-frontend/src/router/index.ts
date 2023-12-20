@@ -1,9 +1,9 @@
-const DashboardView = import('@/views/DashboardView.vue')
-const DeviceSubView = import('@/views/DeviceSubView.vue')
-const LoginOrRegisterView = import('@/views/LoginOrRegisterView.vue')
-const SiteStatisticSubView = import('@/views/SiteStatisticSubView.vue')
-const TagSubView = import('@/views/TagSubView.vue')
-const UserSubView = import('@/views/UserSubView.vue')
+const DashboardView = () => import ('@/views/DashboardView.vue')
+const DeviceSubView = () => import ('@/views/DeviceSubView.vue')
+const LoginOrRegisterView = () => import ('@/views/LoginOrRegisterView.vue')
+const SiteStatisticSubView = () => import ('@/views/SiteStatisticSubView.vue')
+const TagSubView = () => import ('@/views/TagSubView.vue')
+const UserSubView = () => import ('@/views/UserSubView.vue')
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({

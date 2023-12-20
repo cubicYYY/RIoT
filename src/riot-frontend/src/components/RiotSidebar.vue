@@ -1,12 +1,12 @@
 <template>
-    <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" collapsible>
-        <a-flex :style="siderStyle" vertical>
+    <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" width="15%" :style="siderStyle"
+        collapsible>
+        <a-flex vertical style="height: 100%;">
             <Slogan id="slogan" />
-            <a-menu id="side-bar-menu-main" mode="inline" theme="light" 
-                :style="sidebarMenuStyle" :items="navItems">
+            <a-menu id="side-bar-menu-main" mode="inline" theme="light" :style="sidebarMenuStyle" :items="navItems">
             </a-menu>
-            <a-menu :selectable="false" id="side-bar-menu-main" mode="inline" theme="light"
-                :style="sidebarBottomMenuStyle" :items="navBottomItems">
+            <a-menu :selectable="false" id="side-bar-menu-main" mode="inline" theme="light" :style="sidebarBottomMenuStyle"
+                :items="navBottomItems">
             </a-menu>
         </a-flex>
     </a-layout-sider>
@@ -25,7 +25,10 @@ import {
 import { defineStore } from 'pinia'
 import { RouterLink } from 'vue-router';
 const siderStyle: CSSProperties = {
-    minHeight: '100vh',
+    height: '100vh',
+    position: 'sticky',
+    top: 0,
+    flex: 1,
 };
 const sidebarMenuStyle: CSSProperties = {
     display: 'flex',

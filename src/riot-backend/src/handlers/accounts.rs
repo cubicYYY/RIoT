@@ -65,7 +65,7 @@ fn validate_pwd(password: &str) -> Result<(), ValidationError> {
 /// Web json form to register a new user
 pub struct RegisterForm {
     #[validate(
-        length(min = 4, max = 64, message = "Username must be 4-64 characters"),
+        length(min = 6, max = 64, message = "Username must be 6-64 characters"),
         custom = "validate_username"
     )]
     pub username: Option<String>,
@@ -92,7 +92,7 @@ pub struct LoginForm {
 /// Web json form to update a user
 pub struct UpdateUserForm {
     #[validate(
-        length(min = 4, max = 64, message = "Username must be 4-64 characters"),
+        length(min = 6, max = 64, message = "Username must be 6-64 characters"),
         custom = "validate_username"
     )]
     pub username: Option<String>,

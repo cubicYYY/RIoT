@@ -1,6 +1,6 @@
 <template>
   <a-space direction="vertical" :style="{ width: '100%' }">
-    <a-layout :style="appStyle">
+    <a-layout :style="appStyle" has-sider>
       <RiotSidebar />
       <a-layout :style="rightLayoutStyle">
         <RiotHeader username="ExampleUser" />
@@ -52,7 +52,6 @@ watch(
   () => route.fullPath,
   async () => {
     breadcrumpRoutes.value = route.matched.map(r => ({ breadcrumbName: r.meta.title, path: r.path }) as Route)
-    console.log(breadcrumpRoutes.value);
   },
   {
     immediate: true,
@@ -78,10 +77,9 @@ const contentStyle: CSSProperties = {
   overflow: 'clip',
   margin: '0 16px',
   flex: 1,
-  background: '#fff',
 };
 </script>
-<style>
+<style scoped>
 /* Removed to avoid overlapping of the old and the new subview */
 /* .subview-fade-leave-active, */
 .subview-fade-enter-active {
