@@ -13,14 +13,15 @@
     </a-button>
     <a-menu mode="horizontal" style="margin-left: 16px;">
       <a-menu-item key="5">
-        <router-link to="/user">
-          <UserOutlined class="trigger" style="margin: 8px;"/>账号设置
+        <router-link to="/dashboard/user">
+          <UserOutlined class="trigger" style="margin: 8px;"/>{{ props.username }}
         </router-link>
       </a-menu-item>
     </a-menu>
   </a-layout-header>
 </template>
 <script lang="ts" setup>
+const props = defineProps(['username'])
 import type { CSSProperties } from 'vue';
 import { useCollapseStore } from './RiotSidebar.vue';
 import {
