@@ -1,14 +1,14 @@
 const DashboardView = () => import ('@/views/DashboardView.vue')
-const DeviceSubView = () => import ('@/views/DeviceSubView.vue')
-const DeviceView = () => import ('@/views/DeviceView.vue')
+const DeviceSubView = () => import ('@/views/device/DeviceSubView.vue')
+const DeviceView = () => import ('@/views/device/DeviceView.vue')
 const LoginView = () => import ('@/views/LoginPage.vue')
 const RegisterView = () => import ('@/views/RegisterPage.vue')
 const SiteStatisticSubView = () => import ('@/views/SiteStatisticSubView.vue')
-const TagSubView = () => import ('@/views/TagSubView.vue')
+const TagSubView = () => import ('@/views/tag/TagSubView.vue')
 const UserSubView = () => import ('@/views/UserSubView.vue')
-const PageNotFound = () => import ('@/views/PageNotFound.vue')
-const TypeSubView = () => import ('@/views/TypeSubView.vue')
-const RecordDetailView = () => import ('@/views/RecordDetailSubView.vue')
+const PageNotFound = () => import ('@/views/httpStatus/PageNotFound.vue')
+const TypeSubView = () => import ('@/views/type/TypeSubView.vue')
+const RecordDetailView = () => import ('@/views/device/RecordDetailSubView.vue')
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -17,6 +17,7 @@ const router = createRouter({
     {
       path: '/',
       redirect: to => {
+        // eslint-disable-next-line no-constant-condition
         if (/* isLoggedIn */true) {
           return { path: '/dashboard'}
         } else {

@@ -1,5 +1,5 @@
 <template>
-    <a-row :gutter="gutter" align="middle">
+    <a-row :gutter="gutter" align="top">
         <a-col :span="span" style="text-align: right;">{{ props.prompt }}:</a-col>
         <a-col :span="24 - span">
             <slot v-if="!props.content" name="content"></slot>

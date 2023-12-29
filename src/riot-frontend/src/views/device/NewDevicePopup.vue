@@ -1,15 +1,15 @@
 <template>
     <a-form :model="formState" name="basic" :label-col="{ span: 6 }" :wrapper-col="{ span: 12 }" autocomplete="off"
         @finish="onFinish" @finishFailed="onFinishFailed">
-        <a-form-item label="设备名称" name="name">
-            <a-input v-model:value="formState.name" />
+        <a-form-item label="设备名称" name="name" :rules="[{ required: true, message: '请输入设备名' }]">
+            <a-input v-model:value="formState.name" required />
         </a-form-item>
 
         <a-form-item label="设备描述" name="description">
             <a-textarea v-model:value="formState.description" />
         </a-form-item>
 
-        <a-form-item label="设备类型" name="dtype" :span="8">
+        <a-form-item label="设备类型" name="dtype" :span="8" :rules="[{ required: true, message: '请指定设备类型' }]">
             <a-input v-model:value="formState.dtype" />
         </a-form-item>
 
@@ -21,12 +21,14 @@
             <a-input-number v-model:value="formState.longitude" />
         </a-form-item>
 
-        <a-form-item label="topic" name="topic">
+        <a-form-item label="topic" name="topic" :rules="[{ required: true, message: '请输入topic后缀' }]" :autoLink="false">
             <a-input-group compact>
-                <a-tooltip title="API Key为固定前缀">
-                    <a-input value="/test/topic" disabled style="width: 30%;"/>
-                </a-tooltip>
-                <a-input v-model:value="formState.topic" style="width: 70%;"/>
+                <a-form-item-rest>
+                    <a-tooltip title="API Key为固定前缀">
+                        <a-input :value="apiKey" disabled style="width: 30%;" />
+                    </a-tooltip>
+                </a-form-item-rest>
+                <a-input v-model:value="formState.topic" style="width: 70%;" />
             </a-input-group>
         </a-form-item>
     </a-form>

@@ -1,6 +1,11 @@
 <template>
-    <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" width="15vw" :style="siderStyle"
+    <a-layout-sider 
+        :trigger="null" 
+        v-model:collapsed="useCollapseStore().collapsed" 
+        :style="siderStyle"
+        breakpoint="lg" 
         collapsible>
+        <div class="logo" />
         <a-flex vertical style="height: 100%;">
             <Slogan id="slogan" />
             <a-menu id="side-bar-menu-main" mode="inline" theme="light" :style="sidebarMenuStyle" :items="navItems">
