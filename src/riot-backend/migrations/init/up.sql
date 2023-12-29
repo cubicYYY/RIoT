@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS `user` (
     INDEX email_index (`email`),
     INDEX api_index (`api_key`)
 );
+CREATE TABLE IF NOT EXISTS `dtype` (
+    `id` SERIAL PRIMARY KEY,
+    `name` VARCHAR(256) NOT NULL,
+    `ptype` INT UNSIGNED NOT NULL,
+    `parser` TEXT NOT NULL,
+    FOREIGN KEY (`uid`) REFERENCES `user`(id) ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS `device` (
     `id` SERIAL PRIMARY KEY,
     `uid` BIGINT UNSIGNED NOT NULL,
@@ -24,7 +32,8 @@ CREATE TABLE IF NOT EXISTS `device` (
     `activated` BOOLEAN DEFAULT TRUE NOT NULL,
     `topic` VARCHAR(512) NOT NULL UNIQUE,
     INDEX topic_index (`topic`),
-    FOREIGN KEY (`uid`) REFERENCES `user`(id) ON DELETE RESTRICT
+    FOREIGN KEY (`uid`) REFERENCES `user`(id) ON DELETE RESTRICT,
+    FOREIGN KEY (`dtype`) REFERENCES `dtype`(id) ON DELETE RESTRICT
 );
 CREATE TABLE IF NOT EXISTS `tag` (
     `id` SERIAL PRIMARY KEY,

@@ -4,7 +4,7 @@
     token: {
       // colorPrimary: '#222222',
     },
-  }">
+  }" apiRoot="http://127.0.0.1:8888/api">
     <router-view></router-view>
   </a-config-provider>
 </template>

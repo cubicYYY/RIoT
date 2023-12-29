@@ -4,12 +4,12 @@
       <RiotSidebar />
       <a-layout :style="rightLayoutStyle">
         <RiotHeader username="ExampleUser" />
-        <a-breadcrumb :routes="breadcrumpRoutes" style="margin: 16px;">
+        <a-breadcrumb :routes="breadcrumpRoutes" style="margin: 16px">
           <template #itemRender="{ route, paths }">
             <span v-if="breadcrumpRoutes.indexOf(route) === breadcrumpRoutes.length - 1">
               {{ route.breadcrumbName }}
             </span>
-            <router-link v-else :to="`/${paths.join('/')}`">
+            <router-link v-else :to="`/${paths[breadcrumpRoutes.indexOf(route)]}`">
               {{ route.breadcrumbName }}
             </router-link>
           </template>
@@ -17,7 +17,7 @@
         <a-layout-content :style="contentStyle">
           <router-view v-slot="{ Component }">
             <Transition name="subview-fade">
-            <component :is="Component" />
+              <component :is="Component" />
             </Transition>
           </router-view>
         </a-layout-content>
@@ -26,19 +26,18 @@
   </a-space>
 </template>
 <script lang="ts" setup>
-import type { CSSProperties } from 'vue';
-import { ref, watch } from 'vue';
+import type { CSSProperties } from 'vue'
+import { ref, watch } from 'vue'
 import RiotHeader from '../components/RiotHeader.vue'
 import RiotSidebar from '../components/RiotSidebar.vue'
-import { useRoute } from 'vue-router';
-
+import { useRoute } from 'vue-router'
 interface Route {
-  path: string;
-  breadcrumbName: string;
+  path: string
+  breadcrumbName: string
   children?: Array<{
-    path: string;
-    breadcrumbName: string;
-  }>;
+    path: string
+    breadcrumbName: string
+  }>
 }
 declare module 'vue-router' {
   interface RouteMeta {
@@ -46,28 +45,52 @@ declare module 'vue-router' {
   }
 }
 // Automatically derived breadcrumb
-const route = useRoute();
-const breadcrumpRoutes = ref(route.matched.map(r => ({ breadcrumbName: r.meta.title, path: r.path }) as Route));
+function routeDeduplicate(routes: Route[]) {
+  const filteredList: Route[] = []
+  for (let i = 0; i < routes.length; i++) {
+    // Skip the first item, as there is no previous item to compare
+    if (i === 0) {
+      filteredList.push(routes[i])
+      continue
+    }
+
+    // Compare the current item's path with the previous item's path
+    if (routes[i].path !== routes[i - 1].path) {
+      filteredList.push(routes[i])
+    }
+  }
+
+  return filteredList
+}
+const route = useRoute()
+const breadcrumpRoutes = ref(
+  routeDeduplicate(
+    route.matched.map((r) => ({ breadcrumbName: r.meta.title, path: r.path }) as Route)
+  )
+)
 watch(
   () => route.fullPath,
   async () => {
-    breadcrumpRoutes.value = route.matched.map(r => ({ breadcrumbName: r.meta.title, path: r.path }) as Route)
+    breadcrumpRoutes.value = routeDeduplicate(
+      route.matched.map((r) => ({ breadcrumbName: r.meta.title, path: r.path }) as Route)
+    )
   },
   {
-    immediate: true,
+    immediate: true
   }
-);
+)
+// console.log(breadcrumpRoutes.value)
 const appStyle: CSSProperties = {
   display: 'flex',
   minHeight: '100vh',
-  width: '100%',
-};
+  width: '100%'
+}
 
 const rightLayoutStyle: CSSProperties = {
   display: 'flex',
   flex: 1,
-  flexDirection: 'column',
-};
+  flexDirection: 'column'
+}
 
 const contentStyle: CSSProperties = {
   textAlign: 'center',
@@ -76,8 +99,8 @@ const contentStyle: CSSProperties = {
   color: '#aaa',
   overflow: 'clip',
   margin: '0 16px',
-  flex: 1,
-};
+  flex: 1
+}
 </script>
 <style scoped>
 /* Removed to avoid overlapping of the old and the new subview */

@@ -1,5 +1,5 @@
 <template>
-    <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" width="15%" :style="siderStyle"
+    <a-layout-sider :trigger="null" v-model:collapsed="useCollapseStore().collapsed" width="15vw" :style="siderStyle"
         collapsible>
         <a-flex vertical style="height: 100%;">
             <Slogan id="slogan" />
@@ -21,6 +21,7 @@ import {
     TagsOutlined,
     BookOutlined,
     SettingOutlined,
+    ApartmentOutlined,
 } from '@ant-design/icons-vue';
 import { defineStore } from 'pinia'
 import { RouterLink } from 'vue-router';
@@ -62,6 +63,7 @@ function getItem(
 const navItems: any[] = reactive([
     getItem(h(RouterLink, { to: '/dashboard' }, () => '仪表盘主页'), 'home', () => h(DashboardOutlined)),
     getItem(h(RouterLink, { to: '/dashboard/device' }, () => '设备管理'), 'device', () => h(DatabaseOutlined)),
+    getItem(h(RouterLink, { to: '/dashboard/type' }, () => '数据格式配置'), 'type', () => h(ApartmentOutlined)),
     getItem(h(RouterLink, { to: '/dashboard/tag' }, () => '标签（聚类）管理'), 'tag', () => h(TagsOutlined)),
     getItem(h(RouterLink, { to: '/dashboard/user' }, () => '账号设置'), 'user', () => h(SettingOutlined)),
 ]);

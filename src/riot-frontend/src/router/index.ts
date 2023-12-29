@@ -1,14 +1,30 @@
 const DashboardView = () => import ('@/views/DashboardView.vue')
 const DeviceSubView = () => import ('@/views/DeviceSubView.vue')
-const LoginOrRegisterView = () => import ('@/views/LoginOrRegisterView.vue')
+const DeviceView = () => import ('@/views/DeviceView.vue')
+const LoginView = () => import ('@/views/LoginPage.vue')
+const RegisterView = () => import ('@/views/RegisterPage.vue')
 const SiteStatisticSubView = () => import ('@/views/SiteStatisticSubView.vue')
 const TagSubView = () => import ('@/views/TagSubView.vue')
 const UserSubView = () => import ('@/views/UserSubView.vue')
+const PageNotFound = () => import ('@/views/PageNotFound.vue')
+const TypeSubView = () => import ('@/views/TypeSubView.vue')
+const RecordDetailView = () => import ('@/views/RecordDetailSubView.vue')
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/',
+      redirect: to => {
+        if (/* isLoggedIn */true) {
+          return { path: '/dashboard'}
+        } else {
+          return { path: '/login'}
+        }
+        
+      },
+    },
     {
       path: '/dashboard',
       component: DashboardView,
@@ -22,8 +38,25 @@ const router = createRouter({
         },
         {
           path: 'device',
-          component: DeviceSubView,
-          meta: { title: '设备管理'},
+          component: DeviceView,
+          meta: { title: '设备'},
+          children: [
+            {
+              path: '',
+              component: DeviceSubView,
+              meta: { title: '设备列表'},
+            },
+            {
+              path: ':id',
+              component: RecordDetailView,
+              meta: { title: '设备数据'},
+            }
+          ],
+        },
+        {
+          path: 'type',
+          component: TypeSubView,
+          meta: { title: '数据格式配置'},
         },
         {
           path: 'tag',
@@ -39,10 +72,15 @@ const router = createRouter({
     },
     {
       path: '/login',
-      component: LoginOrRegisterView,
+      component: LoginView,
       meta: { title: '登录' },
-      alias: '/register'
     },
+    {
+      path: '/register',
+      component: RegisterView,
+      meta: { title: '注册' },
+    },
+    { path: "/:catchAll(.*)", component: PageNotFound }
   ]
 })
 

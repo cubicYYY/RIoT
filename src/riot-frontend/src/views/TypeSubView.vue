@@ -3,11 +3,7 @@
     <a-flex wrap="wrap" gap="small">
       <a-card hoverable style="width: 150px" v-for="(tag, i) in allTags" :key="i">
         <template #actions>
-          <a-tooltip title="查看所标记设备">
-            <database-outlined key="data" />
-          </a-tooltip>
-          <a-tooltip title="编辑标签信息">
-            <edit-outlined key="edit" @click="showModal" /></a-tooltip>
+          <a-tooltip title="编辑信息"> <edit-outlined key="edit" @click="showModal" /></a-tooltip>
         </template>
         <a-card-meta :title="tag.name" :description="tag.description"> </a-card-meta>
         <a-typography-paragraph style="text-align: left; margin-top: 16px">
@@ -15,7 +11,12 @@
         </a-typography-paragraph>
       </a-card>
     </a-flex>
-    <a-modal v-model:open="open" title="Basic Modal" :confirm-loading="confirmLoading" @ok="handleOk">
+    <a-modal
+      v-model:open="open"
+      title="Basic Modal"
+      :confirm-loading="confirmLoading"
+      @ok="handleOk"
+    >
       <p>Some contents...</p>
       <p>Some contents...</p>
       <p>Some contents...</p>
@@ -25,7 +26,7 @@
 <script lang="ts" setup>
 import { EditOutlined, DatabaseOutlined } from '@ant-design/icons-vue'
 import { ref } from 'vue'
-interface Tag {
+interface Type {
   name: String
   description: String
   related: Number
@@ -44,49 +45,29 @@ const handleOk = (e: MouseEvent) => {
     confirmLoading.value = false
   }, 2000)
 }
-const allTags: Tag[] = [
+const allTags: Type[] = [
   {
-    name: 'Tag Name',
+    name: 'Type Name',
     description: 'This is Makise Kurisu',
     related: 8
   },
   {
-    name: 'Tag Name',
+    name: 'Type Name',
     description: 'This is Makise Kurisu',
     related: 8
   },
   {
-    name: 'Tag Name',
+    name: 'Type Name',
     description: 'This is Makise Kurisu',
     related: 8
   },
   {
-    name: 'Tag Name',
+    name: 'Type Name',
     description: 'This is Makise Kurisu',
     related: 8
   },
   {
-    name: 'Tag Name',
-    description: 'This is Makise Kurisu',
-    related: 8
-  },
-  {
-    name: 'Tag Name',
-    description: 'This is Makise Kurisu',
-    related: 8
-  },
-  {
-    name: 'Tag Name',
-    description: 'This is Makise Kurisu',
-    related: 8
-  },
-  {
-    name: 'Tag Name',
-    description: 'This is Makise Kurisu',
-    related: 8
-  },
-  {
-    name: 'Tag Name',
+    name: 'Type Name',
     description: 'This is Makise Kurisu',
     related: 8
   }
