@@ -61,6 +61,8 @@ pub struct UpdateDeviceForm {
     #[validate(range(min=-180.0, max=180.0, message = "Invalid longitude"))]
     /// Precision: 64 bits
     pub longitude: Option<Option<f64>>,
+    #[validate(length(max = 512, message = "Topic must be less than 255 characters"))]
+    pub topic: Option<String>,
 }
 
 #[utoipa::path(
@@ -255,6 +257,7 @@ pub(crate) async fn del_device(
                 longitude: None,
                 last_update: None,
                 activated: Some(false),
+                topic: None,
             },
             Some(cur_user.id),
         )
@@ -325,6 +328,7 @@ pub(crate) async fn upd_device_info(
         dtype,
         latitude,
         longitude,
+        topic,
     } = form.into_inner();
     debug!("{:?}", latitude);
     match app
@@ -339,6 +343,7 @@ pub(crate) async fn upd_device_info(
                 longitude,
                 last_update: None,
                 activated: None,
+                topic: topic.as_deref(),
             },
             Some(cur_user.id),
         )
@@ -447,10 +452,18 @@ pub(crate) async fn insert_device_records(
         })
         .await
     {
-        Ok(_) => HttpResponse::Ok().json(Response {
-            status: "ok",
-            message: "".into(),
-        }),
+        Ok(_) => {
+            crate::handlers::SYSINFO_CACHE
+                .buffer
+                .write()
+                .await
+                .record_count += 1;
+
+            HttpResponse::Ok().json(Response {
+                status: "ok",
+                message: "".into(),
+            })
+        }
         Err(e) => {
             error!("{:?}", e);
             HttpError::server_error(ErrorMessage::ServerError).error_response()

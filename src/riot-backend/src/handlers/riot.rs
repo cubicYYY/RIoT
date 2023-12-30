@@ -1,11 +1,12 @@
-use std::fs;
-
 use actix_web::get;
 use actix_web::HttpResponse;
 use actix_web::Responder;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use serde::Serialize;
+use std::collections::VecDeque;
+use std::fs;
+use std::time::Duration;
 use sysinfo::{CpuExt, System, SystemExt};
 use tokio::sync::RwLock;
 use utoipa::ToSchema;
@@ -15,11 +16,72 @@ pub static SYSINFO: Lazy<RwLock<System>> = Lazy::new(|| {
     sysinfo.refresh_all();
     RwLock::new(sysinfo)
 });
+pub static SYSINFO_CACHE: Lazy<SysinfoCache> = Lazy::new(|| SysinfoCache::new());
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+pub struct CachedSysinfo {
+    pub cpu_usage: f32,
+    pub record_count: u32,
+    pub device_count: u32,
+    pub device_online: u32,
+}
+impl Default for CachedSysinfo {
+    fn default() -> Self {
+        CachedSysinfo {
+            cpu_usage: 0f32,
+            record_count: 0,
+            device_count: 0,
+            device_online: 0,
+        }
+    }
+}
+pub struct SysinfoCache {
+    pub buffer: RwLock<CachedSysinfo>,
+    pub cache: RwLock<VecDeque<CachedSysinfo>>,
+}
+impl SysinfoCache {
+    const MAX_CAPACITY: usize = 30 * 60 / 5;
+    pub fn new() -> Self {
+        SysinfoCache {
+            buffer: RwLock::new(CachedSysinfo::default()),
+            cache: RwLock::new(VecDeque::with_capacity(Self::MAX_CAPACITY)),
+        }
+    }
+    pub async fn flush(&self) {
+        {
+            let mut buf = self.buffer.write().await;
+            buf.cpu_usage = SYSINFO.read().await.global_cpu_info().cpu_usage();
+            // TODO...
+            buf.device_count = 5;
+            buf.device_online = 3;
+        }
+        {
+            let buf = self.buffer.read().await;
+            {
+                let mut deque = self.cache.write().await;
+                if deque.len() >= Self::MAX_CAPACITY {
+                    deque.pop_front();
+                }
+                deque.push_back(*buf);
+            }
+        }
+        // Clear buffer
+        *self.buffer.write().await = CachedSysinfo::default();
+    }
+    pub async fn new_daemon(&self) {
+        loop {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            self.flush().await;
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
 pub struct ServerStatistic<'a> {
     sys_name: &'a str,
     cpu_name: &'a str,
+    /// Physical, sum of all cores
+    cpu_core_count: usize,
     /// Unit: Seconds
     uptime: u64,
     /// Unit: Percentage
@@ -27,7 +89,7 @@ pub struct ServerStatistic<'a> {
     /// Unit: Bytes
     mem_total: u64,
     /// Unit: Bytes  
-    /// 
+    ///
     /// Note: is not always equal to "free memory":
     /// `MemTotal = MemUsed + MemFree + Buffers + Cached + SReclaimable`
     mem_available: u64,
@@ -38,6 +100,7 @@ pub struct ServerStatistic<'a> {
     /// Average load within 1/5/15 minute.
     /// Unit: Percentage
     load_avg_1_5_15: [f64; 3],
+    last_30min: VecDeque<CachedSysinfo>,
 }
 
 // ROUTES
@@ -60,7 +123,6 @@ pub(crate) async fn healthchecker() -> impl Responder {
         sysinfo.refresh_cpu();
         sysinfo.refresh_memory();
         sysinfo.refresh_disks_list();
-        sysinfo.refresh_networks();
     }
     {
         let sysinfo = SYSINFO.read().await;
@@ -68,6 +130,7 @@ pub(crate) async fn healthchecker() -> impl Responder {
             sys_name: sysinfo.name().as_deref().unwrap_or("Unknown"),
             uptime: sysinfo.uptime(),
             cpu_name: sysinfo.global_cpu_info().name(),
+            cpu_core_count: sysinfo.physical_core_count().unwrap_or(0),
             cpu_usage: sysinfo.global_cpu_info().cpu_usage(),
             mem_total: sysinfo.total_memory(),
             mem_available: sysinfo.available_memory(),
@@ -78,13 +141,19 @@ pub(crate) async fn healthchecker() -> impl Responder {
                 sysinfo.load_average().five,
                 sysinfo.load_average().fifteen,
             ],
+            last_30min: SYSINFO_CACHE.cache.read().await.clone(),
         })
     }
 }
 
-// HTTP Codes
-pub(crate) async fn notfound_404() -> HttpResponse {
-    let content =
-        fs::read_to_string("./public/404.html").unwrap_or_else(|_| "Page not found".to_string());
-    HttpResponse::NotFound().body(content)
+/// For frontend router
+pub(crate) async fn index() -> HttpResponse {
+    let content = fs::read_to_string("./dist/index.html")
+        .unwrap_or_else(|_| "index.html not found".to_string());
+    HttpResponse::Ok().body(content)
 }
+// pub(crate) async fn notfound_404() -> HttpResponse {
+//     let content =
+//         fs::read_to_string("./public/404.html").unwrap_or_else(|_| "Page not found".to_string());
+//     HttpResponse::NotFound().body(content)
+// }

@@ -47,8 +47,13 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, inject, ref } from 'vue'
 import { EditOutlined, CopyOutlined, CopyFilled, FundViewOutlined, PlusCircleOutlined } from '@ant-design/icons-vue'
+import { API_BASE } from '@/type';
+import axios from 'axios';
+
+const api_base = inject<string>(API_BASE, '/api');
+const device_api_base = api_base + '/device';
 const CardFormItem = defineAsyncComponent(() => import('@/components/CardFormItem.vue'));
 const EditDevicePopup = defineAsyncComponent(() => import('@/views/device/EditDevicePopup.vue'));
 const NewDevicePopup = defineAsyncComponent(() => import('@/views/device/NewDevicePopup.vue'));

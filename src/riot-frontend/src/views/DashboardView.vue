@@ -16,9 +16,13 @@
         </a-breadcrumb>
         <a-layout-content :style="contentStyle">
           <router-view v-slot="{ Component }">
-            <Transition name="subview-fade">
-              <component :is="Component" />
+
+            <Transition name="subview-fade" appear>
+              <div id="avoid-no-parentnode">
+                <component :is="Component" />
+              </div>
             </Transition>
+
           </router-view>
         </a-layout-content>
       </a-layout>
@@ -71,6 +75,7 @@ const breadcrumpRoutes = ref(
 watch(
   () => route.fullPath,
   async () => {
+    if (typeof breadcrumpRoutes.value === 'undefined') return;
     breadcrumpRoutes.value = routeDeduplicate(
       route.matched.map((r) => ({ breadcrumbName: r.meta.title, path: r.path }) as Route)
     )
@@ -79,7 +84,6 @@ watch(
     immediate: true
   }
 )
-// console.log(breadcrumpRoutes.value)
 const appStyle: CSSProperties = {
   display: 'flex',
   minHeight: '100vh',

@@ -34,6 +34,7 @@ use utoipa::{
 };
 
 use crate::{app_context::AppState, errors::HttpError};
+use actix_cors::Cors;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -50,6 +51,8 @@ async fn main() -> std::io::Result<()> {
             utils::mqtt_instance::mqtt_listening(mqtt_db_conn);
         })
         .expect("Failed to create MQTT listener!");
+    // System info metrics tracker daemon
+    tokio::spawn(SYSINFO_CACHE.new_daemon());
 
     // Generate OpenAPI docs
 
@@ -159,9 +162,15 @@ async fn main() -> std::io::Result<()> {
             .time_to_live(Duration::from_secs(60 * 60 * 24)) // live, 24h
             .build(),
     };
+    let is_debug = app_state.env.riot.debug;
     let app_data = web::Data::new(app_state);
     HttpServer::new(move || {
         App::new()
+            .wrap(if is_debug {
+                Cors::permissive()
+            } else {
+                Cors::default()
+            })
             .app_data(web::Data::clone(&app_data))
             // !WARN: Must cloned the data into the server,
             // !otherwise each worker thread will have their own states without sharing!
@@ -212,8 +221,8 @@ async fn main() -> std::io::Result<()> {
                 // Admin only:
                 // TODO...
             )
-            .service(Files::new("/", "./public").index_file("index.html"))
-            .default_service(web::route().to(notfound_404))
+            .service(Files::new("/", "./dist").index_file("index.html"))
+            .default_service(web::route().to(index))
     })
     .bind(("0.0.0.0", 8888))?
     .run()

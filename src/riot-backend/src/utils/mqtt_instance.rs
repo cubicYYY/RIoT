@@ -76,6 +76,13 @@ pub async fn mqtt_listening(db: DBClient) {
             if let Err(e) = res {
                 error!("Insert record failed: {:?}", e);
                 continue 'eventloop;
+            } else {
+                crate::handlers::SYSINFO_CACHE
+                    .buffer
+                    .write()
+                    .await
+                    .record_count += 1;
+                continue 'eventloop;
             }
         }
     }

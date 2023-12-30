@@ -4,7 +4,7 @@
             <a-progress type="dashboard" stroke-linecap="square" :stroke-color="{
                 '0%': HEAVY_LOAD, // wtf why is it reversed
                 '100%': LIGHT_LOAD,
-            }" :percent="props.percentage" :success="{ percent: 0 }" />
+            }" :percent="parseFloat(props.percentage)" :success="{ percent: 0 }" />
         </a-flex>
         <a-typography-text style="font-size: 1rem;" v-if="props.total">
             {{ props.used }} {{ props.unit }}

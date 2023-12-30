@@ -5,12 +5,18 @@ use serde::Deserialize;
 
 pub static CONFIG: Lazy<Config> = Lazy::new(|| Config::init());
 
+fn no_debug() -> bool {
+    false
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct SiteConfig {
     /// Your site host, e.g. "http://myriot.com"
     pub host: String,
     pub password_salt: String,
+    #[serde(default = "no_debug")]
+    pub debug: bool,
 }
 
 #[derive(Deserialize, Debug)]

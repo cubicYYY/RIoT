@@ -111,6 +111,11 @@ impl DBClient {
             .get_results(&mut conn)
             .await
     }
+    // pub async fn get_device_cnt(&self) -> Result<i64, DieselErr> {
+    //     use crate::schema::device::dsl::*;
+    //     let mut conn = self.pool.get().await.unwrap();
+    //     device.count().get_result(&mut conn).await
+    // }
     pub async fn get_owned_devices(&self, uid_: u64) -> Result<Vec<Device>, DieselErr> {
         use crate::schema::device::dsl::*;
         let mut conn = self.pool.get().await.unwrap();
@@ -392,6 +397,7 @@ mod tests {
                     longitude: None,
                     last_update: None,
                     activated: None,
+                    topic: None,
                 },
                 Some(modified_user.id),
             )

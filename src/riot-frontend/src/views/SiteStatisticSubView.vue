@@ -3,10 +3,11 @@
         <a-divider orientation="left">服务器负载</a-divider>
         <a-row align="top">
             <a-col :span="12">
-                <DashboardProgress :percentage=80 name="CPU使用率" />
+                <DashboardProgress :percentage="status['cpu_usage'].toFixed(2)" name="CPU使用率" />
             </a-col>
             <a-col :span="12">
-                <DashboardProgress :percentage=60 :total=100 :used=60 name="内存使用率" unit="GB" />
+                <DashboardProgress :percentage="mem_usage.toFixed(2)" :total="mem_total.toFixed(2)"
+                    :used="mem_used.toFixed(2)" name="内存使用率" unit="GB" />
             </a-col>
         </a-row>
         <v-chart class="chart" :option="loadChartOption" autoresize style="height: 300px; width: 100%;" />
@@ -16,35 +17,35 @@
         <a-flex vertical gap="middle">
             <a-row align="center" justify="start">
                 <a-col :span="8">
-                    <a-statistic title="服务端上线时长(uptime)" :value=114514 :formatter="timeFmter" groupSeparator="" />
+                    <a-statistic title="服务端上线时长(uptime)" :value="uptime" :formatter="timeFmter" groupSeparator="" />
                 </a-col>
                 <a-col :span="8">
-                    <a-statistic title="系统" :value="'Ubuntu'" />
+                    <a-statistic title="系统" :value="status['sys_name']" />
                 </a-col>
                 <a-col :span="8">
-                    <a-statistic title="CPU Cores" :value="16" />
-                </a-col>
-            </a-row>
-            <a-row align="center" justify="start">
-                <a-col :span="8">
-                    <a-statistic title="用户设备数量" :value="1000" groupSeparator="" />
-                </a-col>
-                <a-col :span="8">
-                    <a-statistic title="在线设备(30min内活跃)" :value="13" groupSeparator="" />
-                </a-col>
-                <a-col :span="8">
-                    <a-statistic title="用户设备数据条数" :value="114514" groupSeparator="" />
+                    <a-statistic title="CPU Cores" :value="status['cpu_core_count']" />
                 </a-col>
             </a-row>
             <a-row align="center" justify="start">
                 <a-col :span="8">
-                    <a-statistic title="近1分钟负载" :value="12" groupSeparator="" suffix="%" />
+                    <a-statistic title="SWAP区可用大小" :value="swap_free.toFixed(2)" groupSeparator="" suffix="MB" />
                 </a-col>
                 <a-col :span="8">
-                    <a-statistic title="近5分钟负载" :value="11" groupSeparator="" suffix="%" />
+                    <a-statistic title="SWAP区已使用" :value="swap_used.toFixed(2)" groupSeparator="" suffix="MB" />
                 </a-col>
                 <a-col :span="8">
-                    <a-statistic title="近15分钟负载" :value="16" groupSeparator="" suffix="%" />
+                    <a-statistic title="SWAP区总大小" :value="swap_total.toFixed(2)" groupSeparator="" suffix="MB" />
+                </a-col>
+            </a-row>
+            <a-row align="center" justify="start">
+                <a-col :span="8">
+                    <a-statistic title="近1分平均负载" :value="status['load_avg_1_5_15'][0]" groupSeparator="" suffix="%" />
+                </a-col>
+                <a-col :span="8">
+                    <a-statistic title="近5分钟平均负载" :value="status['load_avg_1_5_15'][1]" groupSeparator="" suffix="%" />
+                </a-col>
+                <a-col :span="8">
+                    <a-statistic title="近15分钟平均负载" :value="status['load_avg_1_5_15'][2]" groupSeparator="" suffix="%" />
                 </a-col>
             </a-row>
         </a-flex>
@@ -62,15 +63,29 @@ import {
     LegendComponent
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import type { ComposeOption } from 'echarts/core'
-import type { LineSeriesOption, BarSeriesOption } from 'echarts/charts'
-import type {
-    TitleComponentOption,
-    TooltipComponentOption,
-    GridComponentOption,
-    LegendComponentOption,
-} from 'echarts/components'
-
+import axios from 'axios';
+const UPDATE_INTERVAL = 5.0;
+function index2minute(length: number, index: number): number {
+    return (length - index - 1) * (UPDATE_INTERVAL / 60.0);
+}
+const api_base = inject<string>(API_BASE, '/api');
+let status_ref = ref((await axios.get(api_base + '/healthchecker')).data);
+const status = status_ref.value;
+let mem_total = ref(status["mem_total"] / 1024 / 1024 / 1024); // Bytes to GB
+let mem_used = ref((status["mem_total"] - status["mem_available"]) / 1024 / 1024 / 1024); // Bytes to GB
+let mem_usage = ref(100 * (status["mem_total"] - status["mem_available"]) / status["mem_total"]);
+let swap_free = ref(status['swap_free'] / 1024 / 1024); // Bytes to MB
+let swap_total = ref(status['swap_total'] / 1024 / 1024); // Bytes to MB
+let swap_used = ref(((status['swap_total'] - status['swap_free'])) / 1024 / 1024); // Bytes to MB
+let cpuUsage30min = ref((status['last_30min'] as any[]).map((item, index) =>
+    ([index2minute(status['last_30min'].length, index), item['cpu_usage']])));
+let recordCount30min = ref((status['last_30min'] as any[]).map((item, index) =>
+    ([index2minute(status['last_30min'].length, index), item['record_count']])));
+let deviceCount30min = ref((status['last_30min'] as any[]).map((item, index) =>
+    ([index2minute(status['last_30min'].length, index), item['device_count']])));
+let onlineCount30min = ref((status['last_30min'] as any[]).map((item, index) =>
+    ([index2minute(status['last_30min'].length, index), item['device_online']])));
+let uptime = ref(status['uptime']);
 use([
     TitleComponent,
     TooltipComponent,
@@ -81,20 +96,13 @@ use([
     LegendComponent,
 ])
 
-type EChartsOption = ComposeOption<
-    | TitleComponentOption
-    | TooltipComponentOption
-    | GridComponentOption
-    | LineSeriesOption
-    | BarSeriesOption
-    | LegendComponentOption
->
-
 import VChart from 'vue-echarts';
+import { API_BASE } from '@/type'
+import { inject, ref, watch, type Ref, computed } from 'vue'
 
 use([GridComponent, LineChart, CanvasRenderer, TooltipComponent, TitleComponent])
 
-const loadChartOption: EChartsOption = {
+const loadChartOption = computed(() => ({
     title: {
         left: 'center',
         text: '近30min负载'
@@ -115,18 +123,21 @@ const loadChartOption: EChartsOption = {
     yAxis: {
         name: '负载',
         type: 'value',
+        min: 0,
+        max: 100,
         axisLabel: {
             formatter: "{value} %"
-        }
+        },
     },
     series: [
         {
-            data: [[15, 100], [3, 20], [2, 66], [0, 1]],
-            type: 'line'
+            data: cpuUsage30min.value,
+            type: 'line',
+            areaStyle: {},
         }
     ]
-};
-const dataChartOption: EChartsOption = {
+}));
+const dataChartOption = computed(() => ({
     title: {
         left: 'center',
         text: '近30min数据量'
@@ -150,44 +161,41 @@ const dataChartOption: EChartsOption = {
     },
     series: [
         {
-            data: [[15, 100], [3, 20], [2, 66], [0, 1]],
-            type: 'line'
+            data: recordCount30min.value,
+            type: 'bar'
         }
     ]
-};
+}));
 
-const deviceCountData = [
-    [100, 302, 301, 334, 390, 330, 320],
-    [320, 132, 101, 134, 90, 230, 210],
-];
+const deviceCountData: Ref<any[]> = ref([
+    deviceCount30min.value,
+    onlineCount30min.value,
+]);
 const grid = {
     left: 100,
     right: 100,
     top: 50,
     bottom: 50
 };
-const series = [
+const series = computed(() => ([
     '在线',
     '离线',
-].map((name, sid) => {
+].map((sname, sid) => {
     return {
-        name,
+        name: sname,
         type: 'bar',
         stack: 'total',
         barWidth: '60%',
-        label: {
-            show: true,
-        },
-        data: deviceCountData[sid]
+        data: deviceCountData.value[sid],
     };
-});
-const deviceChartOption = {
+})));
+const deviceChartOption = computed(() => ({
     title: {
         text: '设备数量'
     },
     tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'cross' }
+        axisPointer: { type: 'shadow' }
     },
     legend: {
         selectedMode: true,
@@ -197,13 +205,42 @@ const deviceChartOption = {
         type: 'value'
     },
     xAxis: {
-        type: 'category',
-        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        type: 'value',
+        inverse: true,
+        name: '时间',
+        nameLocation: 'start',
+        axisLabel: {
+            formatter: "{value} min"
+        }
     },
-    series
-};
-
-function timeFmter(_value: any) {
-    return '25时Night'
+    series: series.value
+}));
+watch(status_ref, async (status) => {
+    mem_total.value = status["mem_total"] / 1024 / 1024 / 1024; // Bytes to GB
+    mem_used.value = (status["mem_total"] - status["mem_available"]) / 1024 / 1024 / 1024; // Bytes to GB
+    mem_usage.value = 100 * (status["mem_total"] - status["mem_available"]) / status["mem_total"];
+    swap_free.value = status['swap_free'] / 1024 / 1024; // Bytes to MB
+    swap_total.value = status['swap_total'] / 1024 / 1024; // Bytes to MB
+    swap_used.value = ((status['swap_total'] - status['swap_free'])) / 1024 / 1024; // Bytes to MB
+    cpuUsage30min.value = (status['last_30min'] as any[]).map((item, index) =>
+        ([index2minute(status['last_30min'].length, index), item['cpu_usage']]));
+    recordCount30min.value = (status['last_30min'] as any[]).map((item, index) =>
+        ([index2minute(status['last_30min'].length, index), item['record_count']]));
+    deviceCount30min.value = (status['last_30min'] as any[]).map((item, index) =>
+        ([index2minute(status['last_30min'].length, index), item['device_count']]));
+    onlineCount30min.value = (status['last_30min'] as any[]).map((item, index) =>
+        ([index2minute(status['last_30min'].length, index), item['device_online']]));
+    uptime.value = status['uptime'];
+})
+function increaseUptime() {
+    uptime.value++;
+}
+async function updateServerStatus() {
+    status_ref.value = (await axios.get(api_base + '/healthchecker')).data;
+}
+setInterval(increaseUptime, 1000);
+setInterval(updateServerStatus, 1000);
+function timeFmter(seconds: { value: number }) {
+    return new Date(seconds.value * 1000).toISOString().substring(11, 19);
 }
 </script>

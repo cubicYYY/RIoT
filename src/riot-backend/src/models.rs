@@ -137,6 +137,7 @@ pub struct UpdateDevice<'a> {
     /// Precision: milliseconds
     pub last_update: Option<&'a NaiveDateTime>,
     pub activated: Option<bool>,
+    pub topic: Option<&'a str>,
 }
 
 #[derive(ToSchema, Serialize, Deserialize, Selectable, Queryable, Insertable, Clone, Debug)]
