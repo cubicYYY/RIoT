@@ -163,6 +163,7 @@ async fn main() -> std::io::Result<()> {
             .build(),
     };
     let is_debug = app_state.env.riot.debug;
+    let host: &str = app_state.env.riot.host.as_str();
     let app_data = web::Data::new(app_state);
     HttpServer::new(move || {
         App::new()
@@ -170,6 +171,11 @@ async fn main() -> std::io::Result<()> {
                 Cors::permissive()
             } else {
                 Cors::default()
+                    .supports_credentials()
+                    .allowed_origin(host)
+                    .allow_any_method()
+                    .allow_any_header()
+                    .max_age(600)
             })
             .app_data(web::Data::clone(&app_data))
             // !WARN: Must cloned the data into the server,

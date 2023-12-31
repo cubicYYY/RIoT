@@ -52,7 +52,7 @@ pub struct NewTagForm {
         responses(
             (status = 200, description = "Tags owned by the user", body = Vec<Tag>),
             (status = 403, description = "Permission denied", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         params(),
         security(
@@ -184,7 +184,7 @@ pub(crate) async fn tag_info(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Tag was not found or the tag is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -238,7 +238,7 @@ pub(crate) async fn del_tag(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Tag was not found or the tag is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -300,7 +300,7 @@ pub(crate) async fn upd_tag_info(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Tag was not found or the tag is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -350,7 +350,7 @@ pub(crate) async fn tagged_devices(
         (status = 401, description = "Unauthorized", body = Response),
         (status = 404, description = "Device/tag was not found or the device/tag is not yours \
         and you do not have enough privilege to delete it", body = Response),
-        (status = 500, description = "Internal error, contact webtag admin", body = Response)
+        (status = 500, description = "Internal error, contact web admin", body = Response)
     ),
     security(
         ("jwt_header" = []),
@@ -410,7 +410,7 @@ pub(crate) async fn tag_device(
         (status = 401, description = "Unauthorized", body = Response),
         (status = 404, description = "Device/tag was not found or the device/tag is not yours \
     and you do not have enough privilege to delete it", body = Response),
-        (status = 500, description = "Internal error, contact webtag admin", body = Response)
+        (status = 500, description = "Internal error, contact web admin", body = Response)
     ),
     security(
         ("jwt_header" = []),

@@ -120,7 +120,7 @@ pub struct UpdateUserForm {
             (status = 200, description = "Success", body = Response),
             (status = 400, description = "Bad input", body = Response),
             (status = 409, description = "Duplicate user / conflicted identity / user exists", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         params(),
         security(
@@ -180,9 +180,9 @@ pub(crate) async fn user_register(
             example = json!({"username": "yyysama", "password": "pass.!w0rd"})
         ),
         responses(
-            (status = 200, description = "Success and return user token in message, set the token Cookie", body = Response),
+            (status = 200, description = "Success and return user token in message, set the token Cookie", body = User),
             (status = 403, description = "Failed: wrong credentials or suspended/non-valid account ", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         params(),
         security(
@@ -192,6 +192,7 @@ pub(crate) async fn user_register(
     )]
 #[post("/accounts/login")]
 /// Login with a password
+/// 
 /// To login with an email, use `send_verification` endpoint instead
 pub(crate) async fn user_login(
     form: web::Json<LoginForm>,
@@ -215,10 +216,7 @@ pub(crate) async fn user_login(
                 if user.activated {
                     HttpResponse::Ok()
                         .cookie(jwt_cookie.clone())
-                        .json(Response {
-                            status: "ok",
-                            message: jwt_cookie.value().to_string(),
-                        })
+                        .json(user)
                 } else {
                     HttpError::permission_denied(ErrorMessage::UserNotActivated).error_response()
                 }
@@ -258,7 +256,6 @@ pub(crate) async fn user_info(cur_user: Option<AuthenticatedUser>) -> impl Respo
         Some(user) => {
             let mut user = (*user).clone();
             user.password = "".into();
-            user.api_key = None;
             HttpResponse::Ok().json(user)
         }
         None => HttpResponse::Accepted().json(Response {

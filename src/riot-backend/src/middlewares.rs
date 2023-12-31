@@ -158,7 +158,7 @@ where
             return async move { srv.call(req).await }.boxed_local();
         }
 
-        let user_id = match parse_token(&token.unwrap(), app_state.env.jwt.secret.as_bytes()) {
+        let user_id = match parse_token(token.unwrap(), app_state.env.jwt.secret.as_bytes()) {
             Ok(id) => id,
             Err(e) => {
                 error!("{}", e);

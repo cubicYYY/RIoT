@@ -50,9 +50,9 @@ impl ToString for ErrorMessage {
     }
 }
 
-impl Into<String> for ErrorMessage {
-    fn into(self) -> String {
-        self.to_string()
+impl From<ErrorMessage> for String {
+    fn from(val: ErrorMessage) -> Self {
+        val.to_string()
     }
 }
 
@@ -169,31 +169,31 @@ impl ResponseError for HttpError {
         match cloned.status {
             400 => HttpResponse::BadRequest().json(Response {
                 status: "fail",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             401 => HttpResponse::Unauthorized().json(Response {
                 status: "fail",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             403 => HttpResponse::Forbidden().json(Response {
                 status: "fail",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             404 => HttpResponse::NotFound().json(Response {
                 status: "fail",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             429 => HttpResponse::TooManyRequests().json(Response {
                 status: "fail",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             409 => HttpResponse::Conflict().json(Response {
                 status: "fail",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             500 => HttpResponse::InternalServerError().json(Response {
                 status: "error",
-                message: cloned.message.into(),
+                message: cloned.message,
             }),
             _ => {
                 eprintln!(

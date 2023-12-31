@@ -1,8 +1,12 @@
 <template>
   <div id="tag">
     <a-flex wrap="wrap" gap="small">
-      <a-card hoverable style="width: 150px; display: flex; align-items: center; justify-content: center;"
-        @click="showNewModal"> <!-- New device card -->
+      <a-card
+        hoverable
+        style="width: 150px; display: flex; align-items: center; justify-content: center"
+        @click="showNewModal"
+      >
+        <!-- New device card -->
         <a-flex vertical gap="small" align="center" justify="center">
           <a-tooltip title="新增类型/数据解析器">
             <PlusCircleOutlined :style="{ fontSize: '72px', color: '#08c' }" />
@@ -12,7 +16,9 @@
       </a-card>
       <a-card hoverable style="width: 150px" v-for="(tag, i) in allTags" :key="i">
         <template #actions>
-          <a-tooltip title="编辑信息"> <edit-outlined key="edit" @click="showEditModal" /></a-tooltip>
+          <a-tooltip title="编辑信息">
+            <edit-outlined key="edit" @click="showEditModal"
+          /></a-tooltip>
         </template>
         <a-card-meta :title="tag.name" :description="tag.description"> </a-card-meta>
         <a-typography-paragraph style="text-align: left; margin-top: 16px">
@@ -20,12 +26,22 @@
         </a-typography-paragraph>
       </a-card>
     </a-flex>
-    <a-modal v-model:open="newOpen" title="Basic Modal" :confirm-loading="confirmLoading" @ok="handleNewOk">
+    <a-modal
+      v-model:open="newOpen"
+      title="Basic Modal"
+      :confirm-loading="confirmLoading"
+      @ok="handleNewOk"
+    >
       <p>Some contents...</p>
       <p>Some contents...</p>
       <p>Some contents...</p>
     </a-modal>
-    <a-modal v-model:open="editOpen" title="Basic Modal" :confirm-loading="confirmLoading" @ok="handleEditOk">
+    <a-modal
+      v-model:open="editOpen"
+      title="Basic Modal"
+      :confirm-loading="confirmLoading"
+      @ok="handleEditOk"
+    >
       <p>Some contents...</p>
       <p>Some contents...</p>
       <p>Some contents...</p>

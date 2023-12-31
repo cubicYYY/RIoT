@@ -3,7 +3,7 @@ use log::warn;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
-pub static CONFIG: Lazy<Config> = Lazy::new(|| Config::init());
+pub static CONFIG: Lazy<Config> = Lazy::new(Config::init);
 
 fn no_debug() -> bool {
     false

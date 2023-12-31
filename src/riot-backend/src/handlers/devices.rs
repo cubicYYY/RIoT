@@ -73,7 +73,7 @@ pub struct UpdateDeviceForm {
         responses(
             (status = 200, description = "Devices", body = Vec<Device>),
             (status = 403, description = "Permission denied", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         params(),
         security(
@@ -121,7 +121,7 @@ pub(crate) async fn owned_devices(
         responses(
             (status = 200, description = "Added a new device, message=device id", body = Response),
             (status = 401, description = "Unauthorized", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -227,7 +227,7 @@ pub(crate) async fn device_info(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Device was not found or the device is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -297,7 +297,7 @@ pub(crate) async fn del_device(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Device was not found or the device is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -371,7 +371,7 @@ pub(crate) async fn upd_device_info(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Device was not found or the device is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),
@@ -418,7 +418,7 @@ pub(crate) async fn device_records(
             (status = 401, description = "Unauthorized", body = Response),
             (status = 404, description = "Device was not found or the device is not yours \
         and you do not have enough privilege to delete it", body = Response),
-            (status = 500, description = "Internal error, contact webtag admin", body = Response)
+            (status = 500, description = "Internal error, contact web admin", body = Response)
         ),
         security(
             ("jwt_header" = []),

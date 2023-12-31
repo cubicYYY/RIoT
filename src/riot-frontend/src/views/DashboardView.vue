@@ -16,13 +16,16 @@
         </a-breadcrumb>
         <a-layout-content :style="contentStyle">
           <router-view v-slot="{ Component }">
-
             <Transition name="subview-fade" appear>
               <div id="avoid-no-parentnode">
-                <component :is="Component" />
+                <KeepAlive>
+                  <Suspense>
+                    <component :is="Component" />
+                    <template #fallback> <a-spin size="large" /> </template>
+                  </Suspense>
+                </KeepAlive>
               </div>
             </Transition>
-
           </router-view>
         </a-layout-content>
       </a-layout>
@@ -75,7 +78,7 @@ const breadcrumpRoutes = ref(
 watch(
   () => route.fullPath,
   async () => {
-    if (typeof breadcrumpRoutes.value === 'undefined') return;
+    if (typeof breadcrumpRoutes.value === 'undefined') return
     breadcrumpRoutes.value = routeDeduplicate(
       route.matched.map((r) => ({ breadcrumbName: r.meta.title, path: r.path }) as Route)
     )

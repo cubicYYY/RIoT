@@ -2,6 +2,7 @@
 [riot]
 host = "http://127.0.0.1:8888"
 password_salt = "argon2_hash_salt"
+debug = true
 [email]
 addr = "YourRiot@email.com"
 smtp_relay_server = "smtp.email.com"

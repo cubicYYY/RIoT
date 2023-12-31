@@ -1,20 +1,20 @@
 <template>
-  <Suspense>
-    <a-config-provider :theme="{
+  <a-config-provider
+    :theme="{
       algorithm: darkModeStore.dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
       token: {
         // colorPrimary: '#222222',
-      },
-    }" apiRoot="http://127.0.0.1:8888/api">
+      }
+    }"
+  >
+    <Suspense>
       <router-view></router-view>
-    </a-config-provider>
-    <template #fallback>
-      Load failed.
-    </template>
-  </Suspense>
+      <template #fallback> <a-spin size="large" /> </template>
+    </Suspense>
+  </a-config-provider>
 </template>
 <script lang="ts" setup>
-import { theme } from 'ant-design-vue';
-import { useDarkModeStore } from '@/stores/dark';
+import { theme } from 'ant-design-vue'
+import { useDarkModeStore } from '@/stores/dark'
 const darkModeStore = useDarkModeStore()
 </script>

@@ -16,7 +16,7 @@ pub static SYSINFO: Lazy<RwLock<System>> = Lazy::new(|| {
     sysinfo.refresh_all();
     RwLock::new(sysinfo)
 });
-pub static SYSINFO_CACHE: Lazy<SysinfoCache> = Lazy::new(|| SysinfoCache::new());
+pub static SYSINFO_CACHE: Lazy<SysinfoCache> = Lazy::new(SysinfoCache::new);
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct CachedSysinfo {
@@ -40,7 +40,9 @@ pub struct SysinfoCache {
     pub cache: RwLock<VecDeque<CachedSysinfo>>,
 }
 impl SysinfoCache {
-    const MAX_CAPACITY: usize = 30 * 60 / 5;
+    /// Unit: seconds
+    const UPDATE_INTERVAL: usize = 12;
+    const MAX_CAPACITY: usize = 30 * 60 / Self::UPDATE_INTERVAL;
     pub fn new() -> Self {
         SysinfoCache {
             buffer: RwLock::new(CachedSysinfo::default()),
@@ -70,7 +72,7 @@ impl SysinfoCache {
     }
     pub async fn new_daemon(&self) {
         loop {
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_secs(Self::UPDATE_INTERVAL as u64)).await;
             self.flush().await;
         }
     }
@@ -117,6 +119,8 @@ pub struct ServerStatistic<'a> {
 )]
 #[get("/healthchecker")]
 /// Return statistics of the server
+/// 
+/// TODO: Incremental info 
 pub(crate) async fn healthchecker() -> impl Responder {
     {
         let mut sysinfo = SYSINFO.write().await;
