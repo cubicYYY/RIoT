@@ -58,7 +58,10 @@ import { API_BASE_SYMBOL } from '@/type'
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
 const api = axios.create({
   withCredentials: true,
-  baseURL: api_base
+  baseURL: api_base,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
 interface FormState {

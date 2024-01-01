@@ -17,9 +17,10 @@
       <a-card hoverable style="width: 500px" v-for="(device, i) in allDevices" :key="i">
         <template #actions>
           <a-tooltip title="查看设备数据">
-            <router-link :to="'/dashboard/device/' + device.id"
-              ><fund-view-outlined key="data" /></router-link
-          ></a-tooltip>
+            <router-link :to="'/dashboard/device/' + device.id">
+              <fund-view-outlined key="data" />
+            </router-link>
+          </a-tooltip>
           <a-tooltip title="编辑设备信息">
             <edit-outlined key="edit" @click="showEditModal(device.id)"
           /></a-tooltip>

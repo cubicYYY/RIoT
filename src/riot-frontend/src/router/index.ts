@@ -8,7 +8,7 @@ const TagSubView = () => import('@/views/tag/TagSubView.vue')
 const UserSubView = () => import('@/views/UserSubView.vue')
 const PageNotFound = () => import('@/views/httpStatus/PageNotFound.vue')
 const TypeSubView = () => import('@/views/type/TypeSubView.vue')
-const RecordDetailView = () => import('@/views/device/RecordDetailSubView.vue')
+const RecordDetailSubView = () => import('@/views/device/RecordDetailSubView.vue')
 import { useUserStore } from '@/stores/user'
 import message from 'ant-design-vue/es/message'
 import { createRouter, createWebHistory } from 'vue-router'
@@ -43,8 +43,9 @@ const router = createRouter({
             {
               path: ':id',
               name: 'data',
-              component: RecordDetailView,
-              meta: { title: '设备数据' }
+              component: RecordDetailSubView,
+              meta: { title: '设备数据' },
+              props: true
             }
           ]
         },

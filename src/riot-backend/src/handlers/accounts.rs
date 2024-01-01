@@ -214,6 +214,8 @@ pub(crate) async fn user_login(
             if verify(&user.password, password.as_bytes()) {
                 let jwt_cookie = app.get_jwt_cookie(user.id);
                 if user.activated {
+                    let mut user = user.clone();
+                    user.password="".into();
                     HttpResponse::Ok()
                         .cookie(jwt_cookie.clone())
                         .json(user)

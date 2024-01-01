@@ -411,8 +411,8 @@ pub(crate) async fn device_records(
         tag = "Record",
         request_body(
             content=RecordForm,
-            description="Record submit. Mainly for tests. Timestamp is of millisecond precision",
-            example = json!({"payload":[1,1,4,5,1,4], "timestamp":1145141919})
+            description="Record submit. Mainly for tests. Timestamp is of millisecond precision. USING RAW BYTES EVEN IT IS FOR A JSON DATA!",
+            example = json!({"payload":[123, 34, 120, 34, 58, 32, 50, 44, 32, 34, 121, 34, 58, 32, 51, 125], "timestamp":1145141919})
         ),
         responses(
             (status = 200, description = "Insert record success", body = Response),
