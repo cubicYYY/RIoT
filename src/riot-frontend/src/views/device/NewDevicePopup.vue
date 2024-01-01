@@ -5,8 +5,6 @@
     :label-col="{ span: 6 }"
     :wrapper-col="{ span: 12 }"
     autocomplete="off"
-    @finish="onFinish"
-    @finishFailed="onFinishFailed"
   >
     <a-form-item
       label="设备名称"
@@ -17,7 +15,7 @@
     </a-form-item>
 
     <a-form-item label="设备描述" name="description">
-      <a-textarea v-model:value="formState.description" />
+      <a-textarea v-model:value="formState.desc" />
     </a-form-item>
 
     <a-form-item
@@ -56,33 +54,50 @@
 </template>
 <script lang="ts" setup>
 import { API_BASE_SYMBOL } from '@/type'
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import { inject, reactive } from 'vue'
-const apiKey = '114514'
+const apiKey = 114514
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
-const devices = (await axios.get(api_base + '/devices'))?.data
+const api = axios.create({
+  withCredentials: true,
+  baseURL: api_base
+})
 interface FormState {
   name: string
-  description: string
+  desc: string
   dtype: Number
-  latitude: Number
-  longitude: Number
+  latitude: Number | null
+  longitude: Number | null
   topic: string
 }
-
+async function newDevice(form: FormState): Promise<AxiosResponse<any, any>> {
+  try {
+    const response = await api.post('/devices', form, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response
+  } catch (error: any) {
+    console.log(error)
+    return error.response
+  }
+}
 const formState = reactive<FormState>({
   name: '',
-  description: '',
+  desc: '',
   dtype: 1,
-  latitude: 1.1,
-  longitude: 1.1,
+  latitude: null,
+  longitude: null,
   topic: '/test'
 })
-const onFinish = (values: any) => {
-  console.log('Success:', values)
+const submit = async (): Promise<AxiosResponse<any, any>> => {
+  console.log(formState)
+  const response = await newDevice(formState)
+  return response
 }
 
-const onFinishFailed = (errorInfo: any) => {
-  console.log('Failed:', errorInfo)
-}
+defineExpose({
+  submit
+})
 </script>

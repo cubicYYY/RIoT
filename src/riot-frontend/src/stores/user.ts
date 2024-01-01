@@ -21,7 +21,6 @@ export const useUserStore = defineStore('user', () => {
           }
         })
       ).data
-      console.log('user', user)
       set(user || {})
       return true
     } catch (error) {

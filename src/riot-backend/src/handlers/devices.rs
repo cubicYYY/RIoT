@@ -289,7 +289,8 @@ pub(crate) async fn del_device(
                     "desc":"Balala",
                     "dtype":1,
                     "latitude":14.514,
-                    "longitude":19.19810
+                    "longitude":19.19810,
+                    "topic":"/test"
                 })
         ),
         responses(

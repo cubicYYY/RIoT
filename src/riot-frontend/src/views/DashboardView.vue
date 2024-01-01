@@ -17,14 +17,11 @@
         <a-layout-content :style="contentStyle">
           <router-view v-slot="{ Component }">
             <Transition name="subview-fade" appear>
-              <div id="avoid-no-parentnode">
-                <KeepAlive>
-                  <Suspense>
-                    <component :is="Component" />
-                    <template #fallback> <a-spin size="large" /> </template>
-                  </Suspense>
-                </KeepAlive>
-              </div>
+              <Suspense>
+                <div>
+                  <component :is="Component" />
+                </div>
+              </Suspense>
             </Transition>
           </router-view>
         </a-layout-content>

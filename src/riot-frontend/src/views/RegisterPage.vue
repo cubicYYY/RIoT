@@ -110,7 +110,6 @@ async function register(form: FormState): Promise<AxiosResponse<any, any>> {
         'Content-Type': 'application/json'
       }
     })
-    console.log(response)
     return response
   } catch (error: any) {
     console.log(error)
@@ -119,7 +118,7 @@ async function register(form: FormState): Promise<AxiosResponse<any, any>> {
 }
 const onFinish = async (_values: any) => {
   const response = await register(formState)
-  if (response.status == 200) {
+  if (response.status === 200) {
     message.success('注册成功：请查看邮箱验证邮件以激活！')
     router.push('/login')
   } else {

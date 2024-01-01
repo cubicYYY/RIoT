@@ -1,15 +1,15 @@
 #example config file
 [riot]
-host = "http://127.0.0.1:8888"
+host = "http://localhost:8888"     # WARN: localhost is NOT an alias of '127.0.0.1': please, make them of both frontend and backend matches
 password_salt = "argon2_hash_salt"
 debug = true
 [email]
 addr = "YourRiot@email.com"
 smtp_relay_server = "smtp.email.com"
 smtp_username = "riotriot@email.com" # SMTP username
-smtp_password = "abcdefghijklmnop" # SMTP password/code
+smtp_password = "abcdefghijklmnop"   # SMTP password/code
 [jwt]
-maxage = 86400 # seconds to expire
+maxage = 86400            # seconds to expire
 secret = "jwt_enc_secret"
 [mysql]
 username = "root"

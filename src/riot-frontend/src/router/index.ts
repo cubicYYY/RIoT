@@ -34,9 +34,11 @@ const router = createRouter({
           meta: { title: '设备' },
           children: [
             {
-              path: '',
+              path: 'list',
+              name: 'deviceList',
               component: DeviceSubView,
-              meta: { title: '设备列表' }
+              meta: { title: '设备列表' },
+              alias: ''
             },
             {
               path: ':id',

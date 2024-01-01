@@ -107,7 +107,7 @@
   </a-flex>
 </template>
 <script lang="ts" setup>
-import DashboardProgress from '../components/DashboardProgress.vue'
+import DashboardProgress from '@/components/DashboardProgress.vue'
 /* Echarts */
 import { use } from 'echarts/core'
 import { LineChart, BarChart } from 'echarts/charts'

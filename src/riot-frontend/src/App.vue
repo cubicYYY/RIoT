@@ -7,10 +7,7 @@
       }
     }"
   >
-    <Suspense>
-      <router-view></router-view>
-      <template #fallback> <a-spin size="large" /> </template>
-    </Suspense>
+    <router-view></router-view>
   </a-config-provider>
 </template>
 <script lang="ts" setup>
