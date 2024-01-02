@@ -2,8 +2,8 @@
   <a-form
     :model="formState"
     name="basic"
-    :label-col="{ span: 6 }"
-    :wrapper-col="{ span: 12 }"
+    :label-col="{ span: 4 }"
+    :wrapper-col="{ span: 16 }"
     autocomplete="off"
   >
     <a-form-item
@@ -56,7 +56,9 @@
 import { API_BASE_SYMBOL } from '@/type'
 import axios, { type AxiosResponse } from 'axios'
 import { inject, reactive } from 'vue'
-const apiKey = 114514
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
+const apiKey = userStore.data?.api_key + '/'
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
 const api = axios.create({
   withCredentials: true,
@@ -89,7 +91,7 @@ const formState = reactive<FormState>({
   dtype: 1,
   latitude: null,
   longitude: null,
-  topic: '/test'
+  topic: 'test'
 })
 const submit = async (): Promise<AxiosResponse<any, any>> => {
   console.log(formState)

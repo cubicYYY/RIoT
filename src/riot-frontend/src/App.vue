@@ -7,7 +7,9 @@
       }
     }"
   >
-    <router-view></router-view>
+    <Suspense>
+      <router-view></router-view>
+    </Suspense>
   </a-config-provider>
 </template>
 <script lang="ts" setup>

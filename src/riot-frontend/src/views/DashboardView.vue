@@ -3,7 +3,7 @@
     <a-layout :style="appStyle" has-sider>
       <RiotSidebar />
       <a-layout :style="rightLayoutStyle">
-        <RiotHeader username="ExampleUser" />
+        <RiotHeader :username="userStore.data?.username" />
         <a-breadcrumb :routes="breadcrumpRoutes" style="margin: 16px">
           <template #itemRender="{ route, paths }">
             <span v-if="breadcrumpRoutes.indexOf(route) === breadcrumpRoutes.length - 1">
@@ -35,6 +35,8 @@ import { ref, watch } from 'vue'
 import RiotHeader from '../components/RiotHeader.vue'
 import RiotSidebar from '../components/RiotSidebar.vue'
 import { useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
 interface Route {
   path: string
   breadcrumbName: string

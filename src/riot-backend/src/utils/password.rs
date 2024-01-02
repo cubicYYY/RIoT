@@ -1,7 +1,7 @@
 use argon2::{self, Config as Argon2cfg, Variant, Version};
 use log::debug;
 
-/// RFC 9106 (OWASP) recommends using Argon2id
+/// RFC 9106 (OWASP) recommendation algorithm: Argon2id
 pub fn get_pwd_hash(salt: &[u8], password: &[u8]) -> String {
     let config = Argon2cfg {
         variant: Variant::Argon2i,
@@ -26,7 +26,6 @@ mod tests {
     use rand::Rng;
 
     use crate::utils::password::{get_pwd_hash, verify};
-
     fn generate_random_string(length: usize) -> String {
         const CHARSET: &[u8] =
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=`~";
@@ -43,6 +42,7 @@ mod tests {
     }
 
     #[test]
+    /// Performance benchmark to balance with security
     pub fn hash_benchmark() {
         let hash = get_pwd_hash(b"114514114514", b"Myp4ss!w0rD");
         println!("{}", hash.to_string());

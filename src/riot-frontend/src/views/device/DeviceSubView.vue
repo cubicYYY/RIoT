@@ -35,7 +35,12 @@
           ></CardFormItem>
           <CardFormItem prompt="topic" :span="8">
             <template #content>
-              <a-typography-paragraph copyable :content="device.topic" code style="margin: auto">
+              <a-typography-paragraph
+                copyable
+                :content="apiKey + device.topic"
+                code
+                style="margin: auto"
+              >
                 <template #copyableIcon="{ copied }">
                   <CopyOutlined v-if="!copied" key="copy-icon" />
                   <CopyFilled v-else key="copied-icon" />
@@ -76,6 +81,9 @@ import axios from 'axios'
 import router from '@/router'
 import message from 'ant-design-vue/es/message'
 import { Modal } from 'ant-design-vue'
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
+const apiKey = userStore.data?.api_key + '/'
 const editPopup = ref<InstanceType<typeof EditDevicePopup>>()
 const newPopup = ref<InstanceType<typeof NewDevicePopup>>()
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
@@ -93,6 +101,7 @@ interface Device {
   last_update: string
   dtype: string
   topic: string
+  activated: boolean
 }
 const editOpen = ref<boolean>(false)
 const newOpen = ref<boolean>(false)
@@ -124,13 +133,13 @@ const handleNewOk = async (e: MouseEvent) => {
     const response = await newPopup.value!.submit()
     if (response.status === 200) {
       message.success('添加成功！')
+      setTimeout(() => router.go(0), 2000) // refresh
     } else {
       message.error('添加失败！ 请检查是否有重复的topic或名称: ' + response.data.message)
     }
   }
   confirmLoading.value = false
   newOpen.value = false
-  setTimeout(() => router.go(0), 2000) // refresh
 }
 function timestamp2time(timestamp: number) {
   const iso = new Date(timestamp)
@@ -148,5 +157,6 @@ function timestamp2time(timestamp: number) {
     iso.getSeconds()
   )
 }
-const allDevices: Device[] = (await api.get('/devices')).data
+const allDevicesRaw: Device[] = (await api.get('/devices')).data
+const allDevices: Device[] = allDevicesRaw.filter((item) => item.activated)
 </script>

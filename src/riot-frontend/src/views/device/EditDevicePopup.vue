@@ -2,8 +2,8 @@
   <a-form
     :model="formState"
     name="basic"
-    :label-col="{ span: 6 }"
-    :wrapper-col="{ span: 12 }"
+    :label-col="{ span: 4 }"
+    :wrapper-col="{ span: 16 }"
     autocomplete="off"
   >
     <a-form-item label="设备名称" name="name">
@@ -37,9 +37,20 @@
       </a-input-group>
     </a-form-item>
 
-    <a-form-item :wrapper-col="{ span: 4, offset: 10 }">
-      <a-button type="primary" @click.prevent="onSubmit">提交修改</a-button>
-    </a-form-item>
+    <a-row :gutter="16" justify="center">
+      <a-col>
+        <a-form-item>
+          <a-button type="primary" @click.prevent="onSubmit">提交修改</a-button>
+        </a-form-item>
+      </a-col>
+      <a-col>
+        <a-form-item>
+          <a-popconfirm title="确定删除？" @confirm="onDelete">
+            <a-button type="primary" danger>删除设备（该topic仍将被占用！）</a-button>
+          </a-popconfirm>
+        </a-form-item>
+      </a-col>
+    </a-row>
   </a-form>
 </template>
 <script lang="ts" setup>
@@ -50,8 +61,9 @@ import type { AxiosResponse } from 'axios'
 import axios from 'axios'
 import { inject, reactive } from 'vue'
 const props = defineProps(['did', 'init'])
-console.log(props.did)
-const apiKey = '114514'
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
+const apiKey = userStore.data?.api_key + '/'
 
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
 const api = axios.create({
@@ -79,6 +91,19 @@ async function editDevice(form: FormState): Promise<AxiosResponse<any, any>> {
     return error.response
   }
 }
+async function deleteDevice(): Promise<AxiosResponse<any, any>> {
+  try {
+    const response = await api.delete('/devices/' + props.did, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    return response
+  } catch (error: any) {
+    console.log(error)
+    return error.response
+  }
+}
 const formState = reactive<FormState>(props.init)
 const onSubmit = async (): Promise<void> => {
   console.log(formState)
@@ -87,7 +112,12 @@ const onSubmit = async (): Promise<void> => {
   else message.error('修改失败：请检查是否有重复的名称/topic')
   setTimeout(() => router.go(0), 2000) // refresh
 }
-
+const onDelete = async (): Promise<void> => {
+  const response = await deleteDevice()
+  if (response.status === 200) message.success('删除成功！')
+  else message.error('删除失败')
+  setTimeout(() => router.go(0), 2000) // refresh
+}
 defineExpose({
   submit: onSubmit
 })
