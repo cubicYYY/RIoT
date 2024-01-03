@@ -23,7 +23,10 @@ export const parsers: Parser[] = [
     name: 'BS_assginment',
     type: 'json',
     parser: null,
-    lines: [{ title: '警报', x: 'timestamp', y: 'alert' }],
+    lines: [
+      { title: 'value取值', x: 'timestamp', y: 'value' },
+      { title: '警报', x: 'timestamp', y: 'alert' }
+    ],
     maps: [{ title: '轨迹与数据', latitude: 'lat', longitude: 'lng', order: 'timestamp' }]
   },
   {

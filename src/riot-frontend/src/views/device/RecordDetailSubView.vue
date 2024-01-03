@@ -6,7 +6,7 @@
     <template v-for="(line, i) in chartOptions" :key="i">
       <v-chart class="chart" :option="line" autoresize style="height: 300px; width: 100%" />
     </template>
-    <a-divider orientation="left">可视化地图</a-divider>
+    <a-divider orientation="left">可视化地图（点击查看数据）</a-divider>
     <div id="amap" style="height: 600px; width: 100%"></div>
   </a-flex>
 </template>
@@ -123,6 +123,13 @@ const initMap = () => {
     // DEBUG ONLY
     securityJsCode: '90c3cb3dcd399363b157b42345c5ddf6' // 高德Secure Key
   }
+  function openInfo(AMap: any, position: any, data: any) {
+    let infoWindow = new AMap.InfoWindow({
+      content: data,
+      position
+    })
+    infoWindow.open(state.map)
+  }
   AMapLoader.load({
     key: '94f0a59afe2573ae1634b5d58dab49da', // 高德Web Key
     version: '2.0',
@@ -145,13 +152,13 @@ const initMap = () => {
       state.map.add(pointLayer)
       const markers = parser.maps?.map((gdmap: RiotMap) =>
         recordData
-          .sort((a, b) => a[gdmap.order] || a.timestamp - b[gdmap.order] || a.timestamp)
+          // .sort((a, b) => a[gdmap.order] || a.timestamp - b[gdmap.order] || a.timestamp)
           .map((obj: any) => [obj[gdmap.longitude], obj[gdmap.latitude]])
       )
       let icon = {
         type: 'image',
         image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
-        size: [6, 9],
+        size: [12, 18],
         anchor: 'bottom-center',
         angel: 0,
         retina: true
@@ -166,22 +173,15 @@ const initMap = () => {
           var curPosition = markers[0][i]
           var curData = {
             position: curPosition,
-            icon
+            icon,
+            extData: { id: i }
           }
-          var labelMarker = new AMap.LabelMarker(curData)
-          labelMarker.on('mouseover', function (e: any) {
+          let labelMarker = new AMap.LabelMarker(curData)
+          labelMarker.on('click', function (e: any) {
             var position = e.data.data && e.data.data.position
-
-            if (position) {
-              normalMarker.setContent(
-                '<div class="amap-info-window">' +
-                  position +
-                  '<div class="amap-info-sharp"></div>' +
-                  '</div>'
-              )
-              normalMarker.setPosition(position)
-              state.map.add(normalMarker)
-            }
+            let index = e.target.getExtData().id
+            console.log(recordData[index])
+            openInfo(AMap, position, JSON.stringify(recordData[index], null, 2))
           })
 
           labelMarker.on('mouseout', function () {
@@ -191,14 +191,14 @@ const initMap = () => {
           mapMarkers.push(labelMarker)
         }
         pointLayer.add(mapMarkers)
+        new AMap.Polyline({
+          map: state.map,
+          path: markers[0],
+          showDir: true,
+          strokeColor: '#28F',
+          strokeWeight: 2
+        })
       }
-      // const polyline = new AMap.Polyline({
-      //     map: state.map,
-      //     path: markers,
-      //     showDir: true,
-      //     strokeColor: "#28F",
-      //     strokeWeight: 6,
-      // });
       state.map.setFitView()
     })
     .catch((e) => {
@@ -208,32 +208,3 @@ const initMap = () => {
 }
 onMounted(initMap)
 </script>
-<style>
-html,
-body,
-#container {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-}
-
-.amap-info-window {
-  width: 150px;
-  background: #fff;
-  border-radius: 3px;
-  padding: 3px 7px;
-  box-shadow: 0 2px 6px 0 rgba(114, 124, 245, 0.5);
-  position: relative;
-}
-
-.amap-info-sharp {
-  position: absolute;
-  top: 21px;
-  bottom: 0;
-  left: 50%;
-  margin-left: -8px;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid #fff;
-}
-</style>
