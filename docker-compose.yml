@@ -1,0 +1,35 @@
+version: '3.3'
+services:
+  mysql:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'riot'
+      MYSQL_USER: 'riot'
+      MYSQL_PASSWORD: 'RuSsStT.!IiooTt'
+      MYSQL_ROOT_PASSWORD: 'r3k;4nmejr38924321elbnu2031' # !!请务必和./src/riot-backend/your_config.toml保持一致
+    ports:
+      - '9906:3306'
+    expose:
+      - '3306'
+    volumes:
+      - riot_db:/var/lib/mysql
+  rumqttd:
+    image: bytebeamio/rumqttd
+    restart: always
+    ports:
+      - '1883:1883'
+    expose:
+      - '1883'
+  web:
+    build:
+      context: .
+    restart: always
+    ports:
+      - "7107:7107"
+    depends_on:
+      - mysql
+      - rumqttd
+    
+volumes:
+  riot_db:

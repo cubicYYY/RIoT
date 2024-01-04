@@ -46,7 +46,7 @@
       <a-col>
         <a-form-item>
           <a-popconfirm title="确定删除？" @confirm="onDelete">
-            <a-button type="primary" danger>删除设备（该topic仍将被占用！）</a-button>
+            <a-button type="primary" danger>删除设备</a-button>
           </a-popconfirm>
         </a-form-item>
       </a-col>

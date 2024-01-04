@@ -15,7 +15,7 @@ use diesel_async::AsyncMysqlConnection;
 use handlers::*;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::info;
+use log::{error, info};
 use models::*;
 use moka::future::Cache;
 use std::{thread, time::Duration};
@@ -138,11 +138,22 @@ async fn main() -> std::io::Result<()> {
 
     info!("Start database init...");
     pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+    /// seconds
+    const TRY_CONNECT_INTERVAL: u64 = 5;
     tokio::task::spawn_blocking(move || {
         use diesel::prelude::Connection;
-        let conn = AsyncConnectionWrapper::<AsyncMysqlConnection>::establish(
-            &DBClient::get_database_url(),
-        )?;
+        let conn = 'wait_for_mysql: loop {
+            match AsyncConnectionWrapper::<AsyncMysqlConnection>::establish(
+                &DBClient::get_database_url(),
+            ) {
+                Ok(conn) => break 'wait_for_mysql conn,
+                Err(e) => {
+                    error!("Trying to reconnect MySQL in {TRY_CONNECT_INTERVAL} seconds. ({e:?})");
+                    thread::sleep(Duration::from_secs(TRY_CONNECT_INTERVAL));
+                    continue 'wait_for_mysql;
+                }
+            };
+        };
         let mut async_wrapper = AsyncConnectionWrapper::<AsyncMysqlConnection>::from(conn);
         async_wrapper.run_pending_migrations(MIGRATIONS).unwrap();
         Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())

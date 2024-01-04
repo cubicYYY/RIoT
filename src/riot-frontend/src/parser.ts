@@ -1,21 +1,3 @@
-export interface RiotLine {
-  x: string
-  y: string
-  title: string
-}
-export interface RiotMap {
-  latitude: string
-  longitude: string
-  order: string
-  title: string
-}
-export interface Parser {
-  name: string
-  type: 'raw' | 'json'
-  parser: Function | null
-  lines?: RiotLine[]
-  maps?: RiotMap[] // 目前只支持一个
-}
 // 你可以类比地自定义一些数据解析方式:)
 export const parsers: Parser[] = [
   { name: 'default', type: 'raw', parser: (raw: number[]) => ({ payload: raw.toString() }) },
@@ -38,6 +20,26 @@ export const parsers: Parser[] = [
     }
   }
 ]
+
+export interface RiotLine {
+  x: string
+  y: string
+  title: string
+}
+export interface RiotMap {
+  latitude: string
+  longitude: string
+  order: string
+  title: string
+}
+export interface Parser {
+  name: string
+  type: 'raw' | 'json'
+  parser: Function | null
+  lines?: RiotLine[]
+  maps?: RiotMap[] // 目前只支持一个
+}
+
 function try2json(raw: number[]) {
   try {
     const textDecoder = new TextDecoder('utf-8')

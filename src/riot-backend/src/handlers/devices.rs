@@ -14,6 +14,7 @@ use diesel::result::Error as DieselErr;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
@@ -257,7 +258,7 @@ pub(crate) async fn del_device(
                 longitude: None,
                 last_update: None,
                 activated: Some(false),
-                topic: None,
+                topic: Some(&Uuid::new_v4().to_string()), // Give it a random UUID to avoid collision
             },
             Some(cur_user.id),
         )

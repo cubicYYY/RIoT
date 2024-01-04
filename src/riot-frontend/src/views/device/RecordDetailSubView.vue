@@ -1,7 +1,7 @@
 <template>
   <a-flex vertical>
     <a-divider orientation="left">数据</a-divider>
-    <a-table :columns="columns" :data-source="recordData" :scroll="{ y: '40vh' }" />
+    <a-table :columns="columns" :data-source="recordData" :scroll="{ x: 2000, y: 800 }" />
     <a-divider orientation="left">可视化折线图</a-divider>
     <template v-for="(line, i) in chartOptions" :key="i">
       <v-chart class="chart" :option="line" autoresize style="height: 300px; width: 100%" />
@@ -13,7 +13,7 @@
 <script lang="ts" setup>
 import { API_BASE_SYMBOL } from '@/type'
 import axios from 'axios'
-import { inject, onMounted, reactive, ref } from 'vue'
+import { inject, onMounted, reactive } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
@@ -70,7 +70,7 @@ if (recordData.length > 0) {
   // Update with actual data format
   columns = Object.keys(recordData[0]).map((key: any) => ({
     title: key,
-    dataIndex: key
+    dataIndex: key,
   }))
 }
 const parser: Parser = parsers[dtype]

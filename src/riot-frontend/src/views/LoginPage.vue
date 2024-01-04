@@ -53,6 +53,9 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 import router from '@/router'
 import { message } from 'ant-design-vue'
+import { theme } from 'ant-design-vue';
+const { useToken } = theme;
+const { token } = useToken();
 
 interface FormState {
   username: string
@@ -90,6 +93,6 @@ const loginStyle: CSSProperties = {
   paddingRight: '20vw',
   paddingTop: '10vh',
   paddingBottom: '10vh',
-  background: '#ececec'
+  background: token.value.colorBgBase,
 }
 </script>

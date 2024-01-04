@@ -192,7 +192,7 @@ pub(crate) async fn user_register(
     )]
 #[post("/accounts/login")]
 /// Login with a password
-/// 
+///
 /// To login with an email, use `send_verification` endpoint instead
 pub(crate) async fn user_login(
     form: web::Json<LoginForm>,
@@ -215,10 +215,8 @@ pub(crate) async fn user_login(
                 let jwt_cookie = app.get_jwt_cookie(user.id);
                 if user.activated {
                     let mut user = user.clone();
-                    user.password="".into();
-                    HttpResponse::Ok()
-                        .cookie(jwt_cookie.clone())
-                        .json(user)
+                    user.password = "".into();
+                    HttpResponse::Ok().cookie(jwt_cookie.clone()).json(user)
                 } else {
                     HttpError::permission_denied(ErrorMessage::UserNotActivated).error_response()
                 }

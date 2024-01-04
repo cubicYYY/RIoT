@@ -38,7 +38,7 @@
       <a-row align="center" justify="start">
         <a-col :span="8">
           <a-statistic
-            title="服务端上线时长(机器uptime)"
+            title="服务器uptime"
             :value="uptime"
             :formatter="timeFmter"
             groupSeparator=""

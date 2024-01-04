@@ -119,8 +119,8 @@ pub struct ServerStatistic<'a> {
 )]
 #[get("/healthchecker")]
 /// Return statistics of the server
-/// 
-/// TODO: Incremental info 
+///
+/// TODO: Incremental info
 pub(crate) async fn healthchecker() -> impl Responder {
     {
         let mut sysinfo = SYSINFO.write().await;
