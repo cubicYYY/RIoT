@@ -167,10 +167,18 @@ impl ResponseError for HttpError {
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
         let cloned = self.clone();
         match cloned.status {
-            400 => HttpResponse::BadRequest().json(Response {
-                status: "fail",
-                message: cloned.message,
-            }),
+            400 => HttpResponse::BadRequest()
+                .cookie(
+                    actix_web::cookie::Cookie::build("token", "")
+                        .path("/")
+                        .max_age(actix_web::cookie::time::Duration::new(0, 0))
+                        .http_only(true)
+                        .finish(),
+                )
+                .json(Response {
+                    status: "fail",
+                    message: cloned.message,
+                }),
             401 => HttpResponse::Unauthorized().json(Response {
                 status: "fail",
                 message: cloned.message,

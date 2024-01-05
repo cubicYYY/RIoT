@@ -1,5 +1,7 @@
 # 前端静态文件生成
 FROM node:lts-alpine as frontend-builder
+ENV PROJECT_ENV production
+ENV NODE_ENV production
 
 WORKDIR /frontend
 COPY ./src/riot-frontend/package*.json ./

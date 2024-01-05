@@ -144,9 +144,9 @@ pub(crate) async fn healthchecker() -> impl Responder {
             swap_total: sysinfo.total_swap(),
             swap_free: sysinfo.free_swap(),
             load_avg_1_5_15: [
-                sysinfo.load_average().one,
-                sysinfo.load_average().five,
-                sysinfo.load_average().fifteen,
+                sysinfo.load_average().one * 100.0,
+                sysinfo.load_average().five * 100.0,
+                sysinfo.load_average().fifteen * 100.0,
             ],
             last_30min: SYSINFO_CACHE.cache.read().await.clone(),
         })
