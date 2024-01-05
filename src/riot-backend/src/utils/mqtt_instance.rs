@@ -15,8 +15,8 @@ pub mod mqtt_instancer {
 
     /// Return a new daemon to be later invoked in a async runtime (e.g. tokio)
     impl MqttDaemon {
-        pub fn new_daemon(id: &str) -> (AsyncClient, EventLoop) {
-            let mut mqtt_options = MqttOptions::new(id, "localhost", 1883);
+        pub fn new_daemon(id: &str, host: &str, port: u16) -> (AsyncClient, EventLoop) {
+            let mut mqtt_options = MqttOptions::new(id, host, port);
             mqtt_options.set_keep_alive(Duration::from_secs(30));
             AsyncClient::new(mqtt_options, 1024)
         }
@@ -25,10 +25,13 @@ pub mod mqtt_instancer {
 
 #[actix_web::main]
 /// MQTT Listening daemon
-pub async fn mqtt_listening(db: DBClient) {
+pub async fn mqtt_listening(db: DBClient, host: &str, port: u16) {
     // !important: enough randomness to avoid being kicked by a malicious client with the same id
-    let (mut client, mut eventloop) =
-        MqttDaemon::new_daemon(("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str());
+    let (mut client, mut eventloop) = MqttDaemon::new_daemon(
+        ("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str(),
+        host,
+        port,
+    );
     client
         .subscribe("#", rumqttc::QoS::ExactlyOnce)
         .await
@@ -40,6 +43,8 @@ pub async fn mqtt_listening(db: DBClient) {
                 // May be kicked...
                 let (new_client, new_eventloop) = MqttDaemon::new_daemon(
                     ("MQTT_DAEMON".to_string() + &Uuid::new_v4().to_string()).as_str(),
+                    host,
+                    port,
                 );
                 client = new_client;
                 eventloop = new_eventloop;
@@ -120,7 +125,7 @@ mod tests {
     #[tokio::test]
     /// MQTT Message send test
     async fn send_test() {
-        let (client, mut eventloop) = MqttDaemon::new_daemon("MQTT_DAEMON");
+        let (client, mut eventloop) = MqttDaemon::new_daemon("MQTT_DAEMON", "localhost", 1883);
         client
             .publish(
                 "any/hello",
@@ -138,7 +143,7 @@ mod tests {
     async fn receive() {
         use rumqttc::QoS;
 
-        let (client, mut eventloop) = MqttDaemon::new_daemon("receiver");
+        let (client, mut eventloop) = MqttDaemon::new_daemon("receiver", "localhost", 1883);
         client.subscribe("#", QoS::AtMostOnce).await.unwrap();
 
         loop {
@@ -153,7 +158,7 @@ mod tests {
         use tokio::{task, time};
 
         time::sleep(Duration::from_millis(1000)).await;
-        let (client, mut eventloop) = MqttDaemon::new_daemon("sender");
+        let (client, mut eventloop) = MqttDaemon::new_daemon("sender", "localhost", 1883);
         let cloned = client.clone();
         task::spawn(async move {
             for i in 0..10 {

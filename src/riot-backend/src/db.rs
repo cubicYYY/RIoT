@@ -1,9 +1,12 @@
+use std::time::Duration;
+
 use crate::config::CONFIG;
 // DB
 use crate::models::{
     Device, NewDevice, NewRecord, NewTag, NewUser, Record, Tag, UpdateDevice, UpdateTag,
     UpdateUser, User,
 };
+use chrono::NaiveDateTime;
 use diesel::dsl::exists;
 use diesel::mysql::Mysql;
 use diesel::result::Error as DieselErr;
@@ -111,11 +114,23 @@ impl DBClient {
             .get_results(&mut conn)
             .await
     }
-    // pub async fn get_device_cnt(&self) -> Result<i64, DieselErr> {
-    //     use crate::schema::device::dsl::*;
-    //     let mut conn = self.pool.get().await.unwrap();
-    //     device.count().get_result(&mut conn).await
-    // }
+    pub async fn get_device_cnt(&self) -> Result<i64, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.pool.get().await.unwrap();
+        device.count().get_result(&mut conn).await
+    }
+    pub async fn get_online_device_cnt(&self) -> Result<i64, DieselErr> {
+        use crate::schema::device::dsl::*;
+        let mut conn = self.pool.get().await.unwrap();
+        let idle_timestamp: NaiveDateTime =
+            (chrono::Utc::now() - Duration::from_secs(60 * 10)).naive_utc(); // 10 min
+
+        device
+            .filter(last_update.ge(idle_timestamp))
+            .count()
+            .get_result(&mut conn)
+            .await
+    }
     pub async fn get_owned_devices(&self, uid_: u64) -> Result<Vec<Device>, DieselErr> {
         use crate::schema::device::dsl::*;
         let mut conn = self.pool.get().await.unwrap();

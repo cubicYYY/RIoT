@@ -14,6 +14,7 @@ pub async fn send_email_smtp(
         .subject(subject)
         .body(body.to_string())?;
 
+    log::info!("!!!sending email");
     mailer.send(email).await?;
 
     Ok(())

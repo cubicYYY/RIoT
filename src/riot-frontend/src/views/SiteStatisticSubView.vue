@@ -144,10 +144,10 @@ let recordCount30min = ref(
     item['record_count']
   ])
 )
-let deviceCount30min = ref(
+let offlineCount30min = ref(
   (status['last_30min'] as any[]).map((item, index) => [
     index2minute(status['last_30min'].length, index),
-    item['device_count']
+    item['device_count'] - item['device_online']
   ])
 )
 let onlineCount30min = ref(
@@ -242,7 +242,7 @@ const dataChartOption = computed(() => ({
   ]
 }))
 
-const deviceCountData: Ref<any[]> = ref([deviceCount30min.value, onlineCount30min.value])
+const deviceCountData: Ref<any[]> = ref([offlineCount30min.value, onlineCount30min.value])
 const grid = {
   left: 100,
   right: 100,
@@ -250,7 +250,7 @@ const grid = {
   bottom: 50
 }
 const series = computed(() =>
-  ['在线', '离线'].map((sname, sid) => {
+  ['离线', '在线'].map((sname, sid) => {
     return {
       name: sname,
       type: 'bar',
@@ -304,7 +304,7 @@ watch(status_ref, async (status) => {
     index2minute(status['last_30min'].length, index),
     item['record_count']
   ])
-  deviceCount30min.value = (status['last_30min'] as any[]).map((item, index) => [
+  offlineCount30min.value = (status['last_30min'] as any[]).map((item, index) => [
     index2minute(status['last_30min'].length, index),
     item['device_count']
   ])

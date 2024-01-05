@@ -9,6 +9,7 @@ const UserSubView = () => import('@/views/UserSubView.vue')
 const PageNotFound = () => import('@/views/httpStatus/PageNotFound.vue')
 const TypeSubView = () => import('@/views/type/TypeSubView.vue')
 const RecordDetailSubView = () => import('@/views/device/RecordDetailSubView.vue')
+const VerifyView = () => import('@/views/VerifyView.vue')
 import { useUserStore } from '@/stores/user'
 import message from 'ant-design-vue/es/message'
 import { createRouter, createWebHistory } from 'vue-router'
@@ -81,6 +82,12 @@ const router = createRouter({
       component: RegisterView,
       meta: { title: '注册' }
     },
+    {
+      path: '/verify',
+      name: 'verify',
+      component: VerifyView,
+      meta: { title: '验证' }
+    },
     { path: '/:catchAll(.*)', component: PageNotFound }
   ]
 })
@@ -99,7 +106,12 @@ router.beforeEach(async (to, from) => {
       return { path: '/login' }
     }
   }
-  if (!userStore.loggedIn() && to.name !== 'login' && to.name !== 'register') {
+  if (
+    !userStore.loggedIn() &&
+    to.name !== 'login' &&
+    to.name !== 'register' &&
+    to.name !== 'verify'
+  ) {
     return { name: 'login' }
   }
   return true

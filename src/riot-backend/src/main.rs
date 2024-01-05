@@ -43,12 +43,14 @@ async fn main() -> std::io::Result<()> {
 
     let config = &config::CONFIG;
     let mqtt_db_conn = DBClient::new(&DBClient::get_database_url());
+    let mqtt_host = config.mqtt.host.as_str();
+    let mqtt_port = config.mqtt.port;
     // Embedded MQTT Listening Daemon
     thread::Builder::new()
         .name("MQTT-Listener".into())
         .spawn(move || {
             info!("Start MQTT thread");
-            utils::mqtt_instance::mqtt_listening(mqtt_db_conn);
+            utils::mqtt_instance::mqtt_listening(mqtt_db_conn, mqtt_host, mqtt_port);
         })
         .expect("Failed to create MQTT listener!");
     // System info metrics tracker daemon
@@ -63,6 +65,7 @@ async fn main() -> std::io::Result<()> {
             //accounts
             user_register,
             user_login,
+            user_logout,
             user_info,
             upd_user_info,
             send_verification_email,
@@ -174,6 +177,7 @@ async fn main() -> std::io::Result<()> {
             .build(),
     };
     let is_debug = app_state.env.riot.debug;
+    info!("IN DEBUG MODE");
     let host: &str = app_state.env.riot.host.as_str();
     let app_data = web::Data::new(app_state);
     HttpServer::new(move || {
@@ -212,6 +216,7 @@ async fn main() -> std::io::Result<()> {
                     //users
                     .service(user_register)
                     .service(user_login)
+                    .service(user_logout)
                     .service(user_info)
                     .service(upd_user_info)
                     .service(send_verification_email)

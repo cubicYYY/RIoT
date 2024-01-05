@@ -1,8 +1,14 @@
 <template>
   <a-flex :style="loginStyle" vertical>
     <a-card title="注册" :bordered="false">
-      <a-form :model="formState" name="normal_login" class="login-form" :rules="rules" @finish="onFinish"
-        @finishFailed="onFinishFailed">
+      <a-form
+        :model="formState"
+        name="normal_login"
+        class="login-form"
+        :rules="rules"
+        @finish="onFinish"
+        @finishFailed="onFinishFailed"
+      >
         <a-form-item label="账号" name="username">
           <a-input v-model:value="formState.username" placeholder="用户名">
             <template #prefix>
@@ -28,7 +34,12 @@
         </a-form-item>
 
         <a-form-item>
-          <a-button :disabled="disabled" type="primary" html-type="submit" class="login-form-button">
+          <a-button
+            :disabled="disabled"
+            type="primary"
+            html-type="submit"
+            class="login-form-button"
+          >
             注册
           </a-button>
         </a-form-item>
@@ -44,9 +55,9 @@ import { message } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import axios, { type AxiosResponse } from 'axios'
 import { API_BASE_SYMBOL } from '@/type'
-import { theme } from 'ant-design-vue';
-const { useToken } = theme;
-const { token } = useToken();
+import { theme } from 'ant-design-vue'
+const { useToken } = theme
+const { token } = useToken()
 
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
 const api = axios.create({
@@ -136,6 +147,6 @@ const loginStyle: CSSProperties = {
   paddingRight: '20vw',
   paddingTop: '10vh',
   paddingBottom: '10vh',
-  background: token.value.colorBgBase,
+  background: token.value.colorBgLayout
 }
 </script>

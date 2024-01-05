@@ -218,6 +218,15 @@ pub(crate) async fn user_login(
                     user.password = "".into();
                     HttpResponse::Ok().cookie(jwt_cookie.clone()).json(user)
                 } else {
+                    // TODO: rate limit
+                    let code = Uuid::new_v4();
+                    app.one_time_code.insert(code.to_string(), user.id).await;
+                    let verify_link =
+                        app.env.riot.host.to_string() + &format!("/verify?code={code}");
+                    debug!("OTC link = {verify_link}");
+                    if let Err(e) = app.send_verify_mail(&user.email, &verify_link).await {
+                        error!("{}", e);
+                    }
                     HttpError::permission_denied(ErrorMessage::UserNotActivated).error_response()
                 }
             } else {
@@ -232,6 +241,37 @@ pub(crate) async fn user_login(
             HttpError::server_error(ErrorMessage::ServerError).error_response()
         }
     }
+}
+
+#[utoipa::path(
+    get,
+    context_path = "/api",
+    path = "/accounts/logout",
+    tag = "Account",
+    responses(
+        (status = 200, description = "Success and return user token in message, set the token Cookie", body=Response),
+    ),
+    params(),
+    security(
+        ("jwt_header" = []),
+        ("jwt_cookie" = [])
+    )
+)]
+#[get(
+    "/accounts/logout",
+    wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
+)]
+/// Log out
+pub(crate) async fn user_logout() -> impl Responder {
+    let cookie = actix_web::cookie::Cookie::build("token", "")
+        .path("/")
+        .max_age(actix_web::cookie::time::Duration::new(0, 0))
+        .http_only(true)
+        .finish();
+    HttpResponse::Ok().cookie(cookie).json(Response {
+        status: "ok",
+        message: "".to_string(),
+    })
 }
 
 #[utoipa::path(

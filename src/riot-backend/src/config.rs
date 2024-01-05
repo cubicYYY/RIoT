@@ -44,6 +44,14 @@ pub struct MysqlConfig {
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
+pub struct MqttConfig {
+    pub host: String,
+    /// MySQL port
+    pub port: u16,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct JwtConfig {
     pub maxage: i64,
     pub secret: String,
@@ -55,6 +63,7 @@ pub struct Config {
     pub riot: SiteConfig,
     pub email: EmailConfig,
     pub jwt: JwtConfig,
+    pub mqtt: MqttConfig,
     pub mysql: MysqlConfig,
 }
 

@@ -11,6 +11,8 @@ use sysinfo::{CpuExt, System, SystemExt};
 use tokio::sync::RwLock;
 use utoipa::ToSchema;
 
+use crate::db::DBClient;
+
 pub static SYSINFO: Lazy<RwLock<System>> = Lazy::new(|| {
     let mut sysinfo = System::new_all();
     sysinfo.refresh_all();
@@ -22,8 +24,8 @@ pub static SYSINFO_CACHE: Lazy<SysinfoCache> = Lazy::new(SysinfoCache::new);
 pub struct CachedSysinfo {
     pub cpu_usage: f32,
     pub record_count: u32,
-    pub device_count: u32,
-    pub device_online: u32,
+    pub device_count: i64,
+    pub device_online: i64,
 }
 impl Default for CachedSysinfo {
     fn default() -> Self {
@@ -49,13 +51,12 @@ impl SysinfoCache {
             cache: RwLock::new(VecDeque::with_capacity(Self::MAX_CAPACITY)),
         }
     }
-    pub async fn flush(&self) {
+    pub async fn flush(&self, db: &DBClient) {
         {
             let mut buf = self.buffer.write().await;
             buf.cpu_usage = SYSINFO.read().await.global_cpu_info().cpu_usage();
-            // TODO...
-            buf.device_count = 5;
-            buf.device_online = 3;
+            buf.device_count = db.get_device_cnt().await.unwrap_or(0);
+            buf.device_online = db.get_online_device_cnt().await.unwrap_or(0);
         }
         {
             let buf = self.buffer.read().await;
@@ -71,9 +72,10 @@ impl SysinfoCache {
         *self.buffer.write().await = CachedSysinfo::default();
     }
     pub async fn new_daemon(&self) {
+        let db = DBClient::new(&DBClient::get_database_url());
         loop {
             tokio::time::sleep(Duration::from_secs(Self::UPDATE_INTERVAL as u64)).await;
-            self.flush().await;
+            self.flush(&db).await;
         }
     }
 }

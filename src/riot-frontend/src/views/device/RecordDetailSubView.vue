@@ -68,11 +68,33 @@ let columns = [
 ]
 if (recordData.length > 0) {
   // Update with actual data format
-  columns = Object.keys(recordData[0]).map((key: any) => ({
-    title: key,
-    dataIndex: key,
-  }))
+  columns = Object.keys(recordData[0]).map((key: any) => {
+    let column: any = {
+      title: key,
+      dataIndex: key
+    }
+    // Inject special column
+    if (key === 'timestamp') {
+      column.sorter = (a: number, b: number) => a - b
+    }
+    if (key === 'alert') {
+      column.filters = [
+        {
+          text: '警报',
+          value: 1
+        },
+        {
+          text: '正常',
+          value: 0
+        }
+      ]
+      column.filterMultiple = false
+      column.onFilter = (value: string, record: any) => record.alert === value
+    }
+    return column
+  })
 }
+
 const parser: Parser = parsers[dtype]
 const chartOptions = parser.lines?.map((line) => {
   const chartOption = {
@@ -105,7 +127,7 @@ const chartOptions = parser.lines?.map((line) => {
   }
   return chartOption
 })
-// console.log(chartOptions)
+
 const state = reactive<any>({
   map: null, // 地图实例
   marker: null, // 地图icon
@@ -121,6 +143,8 @@ declare global {
 const initMap = () => {
   window._AMapSecurityConfig = {
     // DEBUG ONLY
+
+    // USE A SEPERATE FILE TO STORE IT AND PUT IT IN .gitignore
     securityJsCode: '90c3cb3dcd399363b157b42345c5ddf6' // 高德Secure Key
   }
   function openInfo(AMap: any, position: any, data: any) {
@@ -155,33 +179,40 @@ const initMap = () => {
           // .sort((a, b) => a[gdmap.order] || a.timestamp - b[gdmap.order] || a.timestamp)
           .map((obj: any) => [obj[gdmap.longitude], obj[gdmap.latitude]])
       )
-      let icon = {
-        type: 'image',
-        image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
-        size: [12, 18],
-        anchor: 'bottom-center',
-        angel: 0,
-        retina: true
-      }
       let normalMarker = new AMap.Marker({
         offset: new AMap.Pixel(-75, -40)
       })
       let mapMarkers: any[] = []
       if (markers && markers.length > 0) {
         // Currently support 1 map
-        for (let i = 0; i < markers[0].length; i++) {
-          var curPosition = markers[0][i]
+        let curMarker = markers[0]
+        for (let i = 0; i < curMarker.length; i++) {
+          var curPosition = curMarker[i]
           var curData = {
             position: curPosition,
-            icon,
+            icon: {
+              type: 'image',
+              image: recordData[i]['alert'] // TODO: custom name
+                ? 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png'
+                : 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+              size: i == curMarker.length - 1 ? [36, 48] : [18, 24],
+              anchor: 'bottom-center',
+              angel: 0,
+              retina: true
+            },
             extData: { id: i }
           }
           let labelMarker = new AMap.LabelMarker(curData)
           labelMarker.on('click', function (e: any) {
             var position = e.data.data && e.data.data.position
             let index = e.target.getExtData().id
-            console.log(recordData[index])
-            openInfo(AMap, position, JSON.stringify(recordData[index], null, 2))
+            openInfo(
+              AMap,
+              position,
+              Object.entries(recordData[index])
+                .map(([key, value]) => `${key}:${value}<br/>`)
+                .join('')
+            )
           })
 
           labelMarker.on('mouseout', function () {

@@ -53,9 +53,9 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 import router from '@/router'
 import { message } from 'ant-design-vue'
-import { theme } from 'ant-design-vue';
-const { useToken } = theme;
-const { token } = useToken();
+import { theme } from 'ant-design-vue'
+const { useToken } = theme
+const { token } = useToken()
 
 interface FormState {
   username: string
@@ -75,7 +75,7 @@ const onFinish = async (values: any) => {
     message.success('登录成功！')
     router.push('/dashboard')
   } else {
-    message.error('登陆失败')
+    message.error('登录失败。如未激活，请检查邮箱是否有验证邮件。')
   }
 }
 
@@ -93,6 +93,6 @@ const loginStyle: CSSProperties = {
   paddingRight: '20vw',
   paddingTop: '10vh',
   paddingBottom: '10vh',
-  background: token.value.colorBgBase,
+  background: token.value.colorBgLayout
 }
 </script>

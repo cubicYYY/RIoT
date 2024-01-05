@@ -1,3 +1,1 @@
-<template>
-    todo
-</template>
+<template>todo</template>

@@ -7,8 +7,9 @@ export const parsers: Parser[] = [
     parser: null,
     lines: [
       { title: 'value取值', x: 'timestamp', y: 'value' },
-      { title: '警报', x: 'timestamp', y: 'alert' }
+      { title: '警报？', x: 'timestamp', y: 'alert' }
     ],
+    alert: 'alert',
     maps: [{ title: '轨迹与数据', latitude: 'lat', longitude: 'lng', order: 'timestamp' }]
   },
   {
@@ -36,6 +37,7 @@ export interface Parser {
   name: string
   type: 'raw' | 'json'
   parser: Function | null
+  alert?: string // 警报字段
   lines?: RiotLine[]
   maps?: RiotMap[] // 目前只支持一个
 }

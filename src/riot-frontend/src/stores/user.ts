@@ -14,7 +14,10 @@ export const useUserStore = defineStore('user', () => {
   const api_base = inject<string>(API_BASE_SYMBOL, '/api')
   const api = axios.create({
     withCredentials: true,
-    baseURL: api_base
+    baseURL: api_base,
+    headers: {
+      'Content-Type': 'application/json'
+    }
   })
   const data = ref<null | User>(null)
   function set(userinfo: User) {

@@ -35,12 +35,7 @@
           ></CardFormItem>
           <CardFormItem prompt="topic" :span="8">
             <template #content>
-              <a-typography-paragraph
-                copyable
-                :content="apiKey + device.topic"
-                code
-                style="margin: auto"
-              >
+              <a-typography-paragraph copyable :content="device.topic" code style="margin: auto">
                 <template #copyableIcon="{ copied }">
                   <CopyOutlined v-if="!copied" key="copy-icon" />
                   <CopyFilled v-else key="copied-icon" />
@@ -83,7 +78,6 @@ import message from 'ant-design-vue/es/message'
 import { Modal } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
-const apiKey = userStore.data?.api_key + '/'
 const editPopup = ref<InstanceType<typeof EditDevicePopup>>()
 const newPopup = ref<InstanceType<typeof NewDevicePopup>>()
 const api_base = inject<string>(API_BASE_SYMBOL, '/api')
