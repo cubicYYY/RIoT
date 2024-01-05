@@ -400,7 +400,7 @@ pub(crate) async fn tag_device(
 }
 
 #[utoipa::path(
-    delete,
+    post,
     context_path = "/api",
     path = "/tags/{tid}/devices",
     tag = "Tag",
@@ -417,7 +417,7 @@ pub(crate) async fn tag_device(
         ("jwt_cookie" = [])
     )
 )]
-#[delete(
+#[post(
     "/tags/{tid}/devices",
     wrap = "RequireAuth::with_priv_level(UserPrivilege::Normal as u32)"
 )]

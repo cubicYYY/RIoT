@@ -20,7 +20,7 @@ pub static SYSINFO: Lazy<RwLock<System>> = Lazy::new(|| {
 });
 pub static SYSINFO_CACHE: Lazy<SysinfoCache> = Lazy::new(SysinfoCache::new);
 
-#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, ToSchema, Debug)]
 pub struct CachedSysinfo {
     pub cpu_usage: f32,
     pub record_count: u32,
@@ -104,6 +104,7 @@ pub struct ServerStatistic<'a> {
     /// Average load within 1/5/15 minute.
     /// Unit: Percentage
     load_avg_1_5_15: [f64; 3],
+    #[schema(value_type=Vec<CachedSysinfo>)]
     last_30min: VecDeque<CachedSysinfo>,
 }
 

@@ -24,4 +24,4 @@ RUN cargo build --release
 EXPOSE 8888
 
 # 请确认参数中的配置文件存在于./src/riot_backend目录下
-CMD ["cargo", "run", "--release", "--", "riot_config.dev.toml"]
+CMD ["cargo", "run", "--release", "--", "riot_config.prod.toml"]

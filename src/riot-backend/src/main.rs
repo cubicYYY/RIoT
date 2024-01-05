@@ -18,7 +18,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use log::{error, info};
 use models::*;
 use moka::future::Cache;
-use std::{thread, time::Duration};
+use std::{io::Write, thread, time::Duration};
 use utoipa_swagger_ui::SwaggerUi;
 
 use actix_files::Files;
@@ -104,6 +104,7 @@ async fn main() -> std::io::Result<()> {
             TagDeviceForm,
             NewTagForm,
             Response,
+            CachedSysinfo,
         )),
         modifiers(&SecurityJwt)
     )]
@@ -136,7 +137,13 @@ async fn main() -> std::io::Result<()> {
         }
     }
     let openapi = ApiDoc::openapi();
-
+    let doc = ApiDoc::openapi()
+        .to_pretty_json()
+        .unwrap_or("Generate failed".to_string());
+    let mut file = std::fs::File::create("riot_doc.json")?;
+    if let Err(e) = file.write_all(doc.as_bytes()) {
+        error!("Failed to generate OpenAPI doc file.{e}");
+    }
     // SQL init migration
 
     info!("Start database init...");

@@ -1,0 +1,1908 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "riot",
+    "description": "",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/accounts/login": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Login with a password",
+        "description": "Login with a password\n\nTo login with an email, use `send_verification` endpoint instead",
+        "operationId": "user_login",
+        "requestBody": {
+          "description": "Login form",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginForm"
+              },
+              "example": {
+                "password": "pass.!w0rd",
+                "username": "yyysama"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success and return user token in message, set the token Cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Failed: wrong credentials or suspended/non-valid account ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/accounts/logout": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Log out",
+        "description": "Log out",
+        "operationId": "user_logout",
+        "responses": {
+          "200": {
+            "description": "Success and return user token in message, set the token Cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/accounts/register": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Register a new user",
+        "description": "Register a new user\nWARNING: The password is transfered as a plain text, HTTPS is a must here",
+        "operationId": "user_register",
+        "requestBody": {
+          "description": "Register form",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterForm"
+              },
+              "example": {
+                "email": "egPerson@example.com",
+                "password": "pass.!w0rd",
+                "username": "yyysama"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate user / conflicted identity / user exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/accounts/send_verification": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Send the verification to the user (specified by email/username) for activation / logging",
+        "description": "Send the verification to the user (specified by email/username) for activation / logging\nONLY actually send if the user exists.",
+        "operationId": "send_verification_email",
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No email provided",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Only 1 request is allowed in 60s",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounts/user_info": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Current user info",
+        "description": "Current user info",
+        "operationId": "user_info",
+        "responses": {
+          "200": {
+            "description": "User struct",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Update user personal info(email/username/password)",
+        "description": "Update user personal info(email/username/password)",
+        "operationId": "upd_user_info",
+        "requestBody": {
+          "description": "Update user",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserForm"
+              },
+              "example": {
+                "email": "new_email@example.com",
+                "password": "raw!pass.word!",
+                "username": "new_name"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No change to be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/accounts/verify": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Verify the email address of the user, or login by the email",
+        "description": "Verify the email address of the user, or login by the email",
+        "operationId": "verify_login_by_email",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok, the user is now activated and logged-in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No email provided",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices": {
+      "get": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "List all devices owned by the user (\"deleted\" devices included)",
+        "description": "List all devices owned by the user (\"deleted\" devices included)",
+        "operationId": "owned_devices",
+        "responses": {
+          "200": {
+            "description": "Devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "Add a new device",
+        "description": "Add a new device",
+        "operationId": "add_device",
+        "requestBody": {
+          "description": "Form for a new device",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDeviceForm"
+              },
+              "example": {
+                "desc": "(optional)McDonald",
+                "dtype": 1,
+                "latitude": 114.514,
+                "longitude": 19.1981,
+                "name": "test_device",
+                "topic": "test-key/home/light"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Added a new device, message=device id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/devices/{did}": {
+      "get": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "Device info",
+        "description": "Device info",
+        "operationId": "device_info",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device was not found"
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "Update a device's information",
+        "description": "Update a device's information",
+        "operationId": "upd_device_info",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Form for a new device",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeviceForm"
+              },
+              "example": {
+                "desc": "Balala",
+                "dtype": 1,
+                "latitude": 14.514,
+                "longitude": 19.1981,
+                "name": "new_name",
+                "topic": "/test"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Update successed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device was not found or the device is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Device"
+        ],
+        "summary": "Delete a device (soft delete, i.e. deactivate it)",
+        "description": "Delete a device (soft delete, i.e. deactivate it)",
+        "operationId": "del_device",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device was not found or the device is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/devices/{did}/records": {
+      "get": {
+        "tags": [
+          "Record"
+        ],
+        "summary": "Device records",
+        "description": "Device records",
+        "operationId": "device_records",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records of the device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Record"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device was not found or the device is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Record"
+        ],
+        "summary": "Insert new device data record",
+        "description": "Insert new device data record",
+        "operationId": "insert_device_records",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Record submit. Mainly for tests. Timestamp is of millisecond precision. USING RAW BYTES EVEN IT IS FOR A JSON DATA!",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordForm"
+              },
+              "example": {
+                "payload": [
+                  123,
+                  34,
+                  120,
+                  34,
+                  58,
+                  32,
+                  50,
+                  44,
+                  32,
+                  34,
+                  121,
+                  34,
+                  58,
+                  32,
+                  51,
+                  125
+                ],
+                "timestamp": 1145141919
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Insert record success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device was not found or the device is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/healthchecker": {
+      "get": {
+        "tags": [
+          "RIoT"
+        ],
+        "summary": "Return statistics of the server",
+        "description": "Return statistics of the server\n\nTODO: Incremental info",
+        "operationId": "healthchecker",
+        "responses": {
+          "200": {
+            "description": "Server statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerStatistic"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "List all tags owned (\"deleted\" tags included)",
+        "description": "List all tags owned (\"deleted\" tags included)",
+        "operationId": "owned_tags",
+        "responses": {
+          "200": {
+            "description": "Tags owned by the user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tag"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "Add a new tag",
+        "description": "Add a new tag",
+        "operationId": "add_tag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTagForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Added a new tag, message = tid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/tags/{tid}": {
+      "get": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "Get tag info",
+        "description": "Get tag info",
+        "operationId": "tag_info",
+        "parameters": [
+          {
+            "name": "tid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag was not found"
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "Update tag info",
+        "description": "Update tag info",
+        "operationId": "upd_tag_info",
+        "parameters": [
+          {
+            "name": "tid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Update successed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag was not found or the tag is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "Soft delete a tag (i.e. deactivate)",
+        "description": "Soft delete a tag (i.e. deactivate)",
+        "operationId": "del_tag",
+        "parameters": [
+          {
+            "name": "tid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag was not found or the tag is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    },
+    "/api/tags/{tid}/devices": {
+      "get": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "Devices tagged with this tag",
+        "description": "Devices tagged with this tag",
+        "operationId": "tagged_devices",
+        "parameters": [
+          {
+            "name": "tid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Devices tagged by this tag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag was not found or the tag is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Tag"
+        ],
+        "summary": "Remove a device tag",
+        "description": "Remove a device tag",
+        "operationId": "untag_device",
+        "parameters": [
+          {
+            "name": "tid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagDeviceForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Delete success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device/tag was not found or the device/tag is not yours and you do not have enough privilege to delete it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error, contact web admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt_header": []
+          },
+          {
+            "jwt_cookie": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CachedSysinfo": {
+        "type": "object",
+        "required": [
+          "cpu_usage",
+          "record_count",
+          "device_count",
+          "device_online"
+        ],
+        "properties": {
+          "cpu_usage": {
+            "type": "number",
+            "format": "float"
+          },
+          "device_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "device_online": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "record_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "Device": {
+        "type": "object",
+        "description": "IoT device",
+        "required": [
+          "id",
+          "uid",
+          "name",
+          "dtype",
+          "topic",
+          "since",
+          "last_update",
+          "activated"
+        ],
+        "properties": {
+          "activated": {
+            "type": "boolean"
+          },
+          "desc": {
+            "type": "string",
+            "nullable": true
+          },
+          "dtype": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "last_update": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Precision: milliseconds"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "Precision: 64 bits",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "Precision: 64 bits",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Precision: milliseconds"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "LoginForm": {
+        "type": "object",
+        "description": "Web json form to login",
+        "required": [
+          "account",
+          "password"
+        ],
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "aliases: `username` `email`"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "NewDeviceForm": {
+        "type": "object",
+        "description": "Web json form to add a new device",
+        "required": [
+          "name",
+          "dtype",
+          "topic"
+        ],
+        "properties": {
+          "desc": {
+            "type": "string",
+            "nullable": true
+          },
+          "dtype": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "Precision: 64 bits",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "Precision: 64 bits",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          }
+        }
+      },
+      "NewTagForm": {
+        "type": "object",
+        "description": "Web json form to add a new tag",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "desc": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Record": {
+        "type": "object",
+        "description": "Device data record",
+        "required": [
+          "id",
+          "did",
+          "payload",
+          "timestamp"
+        ],
+        "properties": {
+          "did": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Device id",
+            "minimum": 0
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "payload": {
+            "type": "string",
+            "format": "binary"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Precision: milliseconds"
+          }
+        }
+      },
+      "RecordForm": {
+        "type": "object",
+        "description": "Web json form (wrapper) to upload data",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "RegisterForm": {
+        "type": "object",
+        "description": "Web json form to register a new user",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Response": {
+        "type": "object",
+        "description": "HTTP universal response form.\n`message` segment can be used to transfer some handy optional data.",
+        "required": [
+          "status",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ServerStatistic": {
+        "type": "object",
+        "required": [
+          "sys_name",
+          "cpu_name",
+          "cpu_core_count",
+          "uptime",
+          "cpu_usage",
+          "mem_total",
+          "mem_available",
+          "swap_total",
+          "swap_free",
+          "load_avg_1_5_15",
+          "last_30min"
+        ],
+        "properties": {
+          "cpu_core_count": {
+            "type": "integer",
+            "description": "Physical, sum of all cores",
+            "minimum": 0
+          },
+          "cpu_name": {
+            "type": "string"
+          },
+          "cpu_usage": {
+            "type": "number",
+            "format": "float",
+            "description": "Unit: Percentage"
+          },
+          "last_30min": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CachedSysinfo"
+            }
+          },
+          "load_avg_1_5_15": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "description": "Average load within 1/5/15 minute.\nUnit: Percentage"
+          },
+          "mem_available": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit: Bytes\n\nNote: is not always equal to \"free memory\":\n`MemTotal = MemUsed + MemFree + Buffers + Cached + SReclaimable`",
+            "minimum": 0
+          },
+          "mem_total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit: Bytes",
+            "minimum": 0
+          },
+          "swap_free": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit: Bytes",
+            "minimum": 0
+          },
+          "swap_total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit: Bytes",
+            "minimum": 0
+          },
+          "sys_name": {
+            "type": "string"
+          },
+          "uptime": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit: Seconds",
+            "minimum": 0
+          }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "description": "Tag for devices",
+        "required": [
+          "id",
+          "uid",
+          "name",
+          "activated"
+        ],
+        "properties": {
+          "activated": {
+            "type": "boolean"
+          },
+          "desc": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "TagDeviceForm": {
+        "type": "object",
+        "description": "Web json form to give a device a tag",
+        "required": [
+          "did"
+        ],
+        "properties": {
+          "did": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "UpdateDeviceForm": {
+        "type": "object",
+        "description": "Web json form to update a device",
+        "properties": {
+          "desc": {
+            "type": "string",
+            "nullable": true
+          },
+          "dtype": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "Precision: 64 bits",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "Precision: 64 bits",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "topic": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateTagForm": {
+        "type": "object",
+        "description": "Web json form to update a tag",
+        "properties": {
+          "desc": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateUserForm": {
+        "type": "object",
+        "description": "Web json form to update a user",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "description": "RIoT platform user",
+        "required": [
+          "id",
+          "username",
+          "email",
+          "password",
+          "privilege",
+          "since",
+          "activated"
+        ],
+        "properties": {
+          "activated": {
+            "type": "boolean"
+          },
+          "api_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "password": {
+            "type": "string"
+          },
+          "privilege": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Precision: milliseconds"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "jwt_cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "token",
+        "description": "JWT token saved in Cookie (you may need to add the `token` cookie by yourself via a browser extension like Cookie-Editor, **but not here**)"
+      },
+      "jwt_header": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token in HTTP `Authorization` header."
+      }
+    }
+  }
+}

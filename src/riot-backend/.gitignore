@@ -4,3 +4,4 @@ dist/
 .git
 *.prod*
 *.dev*
+riot_config.toml
