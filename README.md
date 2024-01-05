@@ -8,7 +8,7 @@ Simple yet powerful platform to manage IoT devices.
 2. `cd ./RIoT`
 3. Config some configuration files:
     +  `src/riot-frontend/src/parser.ts` Data format defs
-    +  `src/riot-frontend/config.ts` Backend endpoint
+    +  `src/riot-frontend/src/config.ts` Backend endpoint
     +  `src/riot-backend/riot_config.toml` Backend config
 4.  `docker-compose up -V`
 
