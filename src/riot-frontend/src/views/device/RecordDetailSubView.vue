@@ -76,6 +76,7 @@ if (recordData.length > 0) {
     // Inject special column
     if (key === 'timestamp') {
       column.sorter = (a: number, b: number) => a - b
+      column.sortDirections = ['ascend', 'descend']
     }
     if (key === 'alert') {
       column.filters = [

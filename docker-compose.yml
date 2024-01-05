@@ -5,10 +5,10 @@ services:
     restart: always
     command: --default-authentication-plugin=mysql_native_password
     environment: # !!请务必和./src/riot-backend/riot_config.prod.toml保持一致
-      MYSQL_DATABASE: riot
-      MYSQL_USER: riot
-      MYSQL_PASSWORD: RuSsStT.!IiooTt114514
-      MYSQL_ROOT_PASSWORD: r3k;4nmed2.4[bnu1el3/031
+      - MYSQL_DATABASE=riot
+      - MYSQL_USER=riot
+      - MYSQL_PASSWORD=riot
+      - MYSQL_ROOT_PASSWORD=riot
     ports:
       - '9906:3306'
     expose:
