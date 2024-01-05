@@ -3,6 +3,9 @@
 Simple yet powerful platform to manage IoT devices.
 **WIP**
 
+## IMPORTANT
+Clear cookie if something weird happened.
+
 ## Usage
 1. `git clone`
 2. `cd ./RIoT`
