@@ -100,7 +100,7 @@ const validPassword = async (_rule: Rule, password: string) => {
 const rules: Record<string, Rule[]> = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'change' },
-    { min: 4, max: 64, message: '用户名长度需要为4-64', trigger: 'blur' },
+    { min: 6, max: 64, message: '用户名长度需要为6-64', trigger: 'blur' },
     { validator: validateUsername, trigger: 'blur' }
   ],
   email: [{ required: true, message: '请输入合法邮箱', trigger: 'change', type: 'email' }],
