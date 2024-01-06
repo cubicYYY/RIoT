@@ -17,9 +17,11 @@ RUN npm run build
 FROM rust:latest
 WORKDIR /app
 COPY ./src/riot-backend .
-COPY --from=frontend-builder /frontend/dist /app/dist
 
+# 尽可能复用docker layer cache
 RUN cargo build --release
+
+COPY --from=frontend-builder /frontend/dist /app/dist
 
 EXPOSE 8888
 

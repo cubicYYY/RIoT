@@ -73,3 +73,6 @@ inherits = "release"
 strip = false
 codegen-units = 16
 debug = true
+
+[source.sjtu]
+registry = "https://mirrors.sjtug.sjtu.edu.cn/git/crates.io-index/"
